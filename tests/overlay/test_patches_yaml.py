@@ -21,7 +21,7 @@ def test_patches_yaml_is_valid_yaml(manifest):
 
 
 def test_patches_yaml_has_schema_version(manifest):
-    assert manifest.get("schema_version") == "1"
+    assert str(manifest.get("schema_version")) == "1"
 
 
 def test_patches_yaml_has_groups(manifest):
