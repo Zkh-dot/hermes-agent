@@ -5516,7 +5516,7 @@ class TelegramAdapter(BasePlatformAdapter):
 
             if result.get("success"):
                 description = result.get("analysis", "a sticker")
-                cache_sticker_description(sticker.file_unique_id, description, emoji, set_name)
+                cache_sticker_description(sticker.file_unique_id, description, emoji, set_name, file_id=sticker.file_id)
                 event.text = build_sticker_injection(description, emoji, set_name)
             else:
                 # Vision failed -- use emoji as fallback
