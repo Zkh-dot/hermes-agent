@@ -72,6 +72,7 @@ def cache_sticker_description(
     description: str,
     emoji: str = "",
     set_name: str = "",
+    file_id: str = "",
 ) -> None:
     """
     Store a sticker description in the cache.
@@ -81,12 +82,14 @@ def cache_sticker_description(
         description:    Vision-generated description text.
         emoji:          Associated emoji (e.g. "😀").
         set_name:       Sticker set name if available.
+        file_id:        Bot-specific file ID for re-sending the sticker.
     """
     cache = _load_cache()
     cache[file_unique_id] = {
         "description": description,
         "emoji": emoji,
         "set_name": set_name,
+        "file_id": file_id,
         "cached_at": time.time(),
     }
     _save_cache(cache)
@@ -96,12 +99,13 @@ def build_sticker_injection(
     description: str,
     emoji: str = "",
     set_name: str = "",
+    file_id: str = "",
 ) -> str:
     """
     Build the warm-style injection text for a sticker description.
 
     Returns a string like:
-      [The user sent a sticker 😀 from "MyPack"~ It shows: "A cat waving" (=^.w.^=)]
+      [The user sent a sticker 😀 from "MyPack"~ It shows: "A cat waving" [file_id: CAACAgIABC] (=^.w.^=)]
     """
     context = ""
     if set_name and emoji:
@@ -109,7 +113,8 @@ def build_sticker_injection(
     elif emoji:
         context = f" {emoji}"
 
-    return f"[The user sent a sticker{context}~ It shows: \"{description}\" (=^.w.^=)]"
+    file_id_hint = f" [file_id: {file_id}]" if file_id else ""
+    return f"[The user sent a sticker{context}~ It shows: \"{description}\"{file_id_hint} (=^.w.^=)]"
 
 
 def build_animated_sticker_injection(emoji: str = "") -> str:
