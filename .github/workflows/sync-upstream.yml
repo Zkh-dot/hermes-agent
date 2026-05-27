@@ -1,0 +1,74 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch:       # allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: personal
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/NousResearch/hermes-agent.git
+
+      - name: Fetch upstream main
+        run: git fetch upstream main
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          if git merge upstream/main --no-edit; then
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "status=conflict" >> $GITHUB_OUTPUT
+            git merge --abort
+          fi
+
+      - name: Push clean merge
+        if: steps.merge.outputs.status == 'clean'
+        run: git push origin personal
+
+      - name: Open conflict issue
+        if: steps.merge.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPSTREAM_SHA=$(git rev-parse upstream/main | head -c 8)
+          gh issue create \
+            --title "Upstream sync conflict (upstream/main @ ${UPSTREAM_SHA})" \
+            --body "$(cat <<'EOF'
+          The daily upstream sync failed due to a merge conflict.
+
+          **Action required:** merge \`upstream/main\` into \`personal\` locally, resolve conflicts, and push.
+
+          \`\`\`bash
+          cd ~/temp/hermes-fork
+          git fetch upstream
+          git checkout personal
+          git merge upstream/main
+          # resolve conflicts, then:
+          git add .
+          git commit
+          git push origin personal
+          \`\`\`
+
+          Run [the workflow manually](../../actions/workflows/sync-upstream.yml) after resolving.
+          EOF
+          )"
+          exit 1
