@@ -30,15 +30,37 @@ jobs:
       - name: Fetch upstream main
         run: git fetch upstream main
 
-      - name: Attempt merge
+      - name: Attempt merge without upstream workflows
         id: merge
         run: |
-          if git merge upstream/main --no-edit; then
-            echo "status=clean" >> $GITHUB_OUTPUT
-          else
-            echo "status=conflict" >> $GITHUB_OUTPUT
+          # Keep this fork's workflow files untouched. GitHub's GITHUB_TOKEN
+          # cannot update .github/workflows/* unless it has the workflow scope,
+          # so upstream workflow changes make an otherwise clean sync unpushable.
+          merge_status=0
+          git merge upstream/main --no-commit --no-ff || merge_status=$?
+
+          non_workflow_conflicts=$(git diff --name-only --diff-filter=U | grep -v '^\.github/workflows/' || true)
+          if [ -n "$non_workflow_conflicts" ]; then
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            printf 'Non-workflow merge conflicts:\n%s\n' "$non_workflow_conflicts"
             git merge --abort
+            exit 0
           fi
+
+          # Drop all upstream changes under .github/workflows/, including files
+          # newly added upstream, then restore the fork's current workflow tree.
+          git rm -r -f --ignore-unmatch .github/workflows
+          git checkout HEAD -- .github/workflows
+          git add .github/workflows
+
+          if git diff --cached --quiet; then
+            echo "status=unchanged" >> "$GITHUB_OUTPUT"
+            git merge --abort || true
+            exit 0
+          fi
+
+          git commit --no-edit
+          echo "status=clean" >> "$GITHUB_OUTPUT"
 
       - name: Push clean merge
         if: steps.merge.outputs.status == 'clean'
