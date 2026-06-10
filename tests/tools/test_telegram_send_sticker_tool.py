@@ -130,3 +130,6 @@ class TestRegistration:
 
         schema = registry.get_entry("send_sticker").schema
         assert "file_id" in schema["parameters"]["required"]
+        description = schema["description"].lower()
+        assert "sticker-only" in description
+        assert "no text" in description

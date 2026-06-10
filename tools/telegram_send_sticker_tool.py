@@ -12,7 +12,9 @@ _SCHEMA = {
     "name": "send_sticker",
     "description": (
         "Send a Telegram sticker to the current chat. "
-        "Valid as the *only* response — no text needed. "
+        "Use this for sticker-only replies when a sticker is more natural than "
+        "text. Valid as the *only* response: after a successful call, send no "
+        "text. "
         "Use file_id from a sticker the user sent you "
         "(visible as [file_id: ...] in the sticker injection). "
         "Only available when Telegram gateway is configured.\n\n"

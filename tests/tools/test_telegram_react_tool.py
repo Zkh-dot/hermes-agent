@@ -135,3 +135,7 @@ class TestRegistration:
         assert schema["parameters"]["required"] == ["emoji"]
         assert "chat_id" in schema["parameters"]["properties"]
         assert "message_id" in schema["parameters"]["properties"]
+        description = schema["description"].lower()
+        assert "спасибо" in description
+        assert "short acknowledgement" in description
+        assert "no text" in description

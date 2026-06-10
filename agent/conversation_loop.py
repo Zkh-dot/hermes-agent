@@ -71,6 +71,76 @@ logger = logging.getLogger(__name__)
 INTERRUPT_WAITING_FOR_MODEL_PREFIX = "Operation interrupted: waiting for model response ("
 
 
+SIDE_EFFECT_ONLY_RESPONSE_TOOLS = frozenset({"telegram_react", "send_sticker"})
+
+
+def _tool_result_succeeded(content: Any) -> bool:
+    """Return True when a terminal interaction tool result reports success."""
+    if isinstance(content, dict):
+        data = content
+    elif isinstance(content, str):
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return False
+    else:
+        return False
+
+    if not isinstance(data, dict):
+        return False
+    if data.get("error"):
+        return False
+    return data.get("success") is True
+
+
+def _side_effect_only_tool_response_names(
+    assistant_msg: Dict[str, Any],
+    messages: List[Dict[str, Any]],
+) -> List[str]:
+    """Return terminal Telegram tool names when the current tool turn is enough.
+
+    A side-effect-only completion is valid only when every tool call in the
+    current assistant message is a known terminal interaction tool and every
+    corresponding tool result reports success. Mixed turns such as
+    `telegram_react` + `memory` are not terminal because the model may still
+    need to produce normal text after non-interaction side effects.
+    """
+    tool_calls = assistant_msg.get("tool_calls") or []
+    if not tool_calls:
+        return []
+
+    call_names: Dict[str, str] = {}
+    for tc in tool_calls:
+        if not isinstance(tc, dict):
+            return []
+        call_id = str(tc.get("id") or "")
+        function = tc.get("function") or {}
+        name = str(function.get("name") or "")
+        if not call_id or name not in SIDE_EFFECT_ONLY_RESPONSE_TOOLS:
+            return []
+        call_names[call_id] = name
+
+    results: Dict[str, Dict[str, Any]] = {}
+    for msg in reversed(messages):
+        if not isinstance(msg, dict):
+            continue
+        if msg is assistant_msg:
+            break
+        if msg.get("role") == "tool":
+            tool_call_id = str(msg.get("tool_call_id") or "")
+            if tool_call_id in call_names and tool_call_id not in results:
+                results[tool_call_id] = msg
+
+    if set(results) != set(call_names):
+        return []
+
+    for tool_call_id in call_names:
+        if not _tool_result_succeeded(results[tool_call_id].get("content")):
+            return []
+
+    return [call_names[tool_call_id] for tool_call_id in call_names]
+
+
 def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str]:
     """Return a user-facing error when Ollama is loaded with too little context."""
     if not getattr(agent, "tools", None):
@@ -3705,6 +3775,34 @@ def run_conversation(
                         pass
 
                 agent._execute_tool_calls(assistant_message, messages, effective_task_id, api_call_count)
+
+                delivered_side_effect_tools = _side_effect_only_tool_response_names(
+                    assistant_msg,
+                    messages,
+                )
+                if (
+                    delivered_side_effect_tools
+                    and not agent._has_content_after_think_block(turn_content)
+                ):
+                    final_response = ""
+                    agent._side_effect_only_response = True
+                    agent._empty_content_retries = 0
+                    agent._thinking_prefill_retries = 0
+                    _turn_exit_reason = "side_effect_only_tool_response"
+                    messages.append({
+                        "role": "assistant",
+                        "content": (
+                            "[side-effect-only response delivered via "
+                            + ", ".join(delivered_side_effect_tools)
+                            + "]"
+                        ),
+                        "_side_effect_only_response": True,
+                    })
+                    logger.info(
+                        "Completed turn with side-effect-only tool response: %s",
+                        ", ".join(delivered_side_effect_tools),
+                    )
+                    break
 
                 if agent._tool_guardrail_halt_decision is not None:
                     decision = agent._tool_guardrail_halt_decision

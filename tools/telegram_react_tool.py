@@ -12,10 +12,14 @@ _SCHEMA = {
     "name": "telegram_react",
     "description": (
         "Set an emoji reaction on a Telegram message. Lets the agent acknowledge "
-        "a message silently — react with 👍 instead of typing 'Got it'. "
-        "Valid as the *only* response (no text needed). "
+        "a message silently — react with 👍 or ❤ instead of typing text. "
+        "Use this as the whole response for short acknowledgement messages "
+        "such as 'thanks', 'thank you', 'спасибо', '+1', or 'ок' when no "
+        "substantive text answer is needed. Valid as the *only* response: "
+        "after a successful call, send no text. "
         "Only available when Telegram gateway is configured.\n\n"
         "Examples:\n"
+        "  User says спасибо: telegram_react(emoji='❤')\n"
         "  Silent ack: telegram_react(emoji='👍')\n"
         "  Specific msg: telegram_react(emoji='🔥', chat_id='-1001234', message_id='42')"
     ),

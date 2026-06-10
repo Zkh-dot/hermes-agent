@@ -3429,6 +3429,65 @@ class TestRunConversation:
         assert mock_handle_function_call.call_args.kwargs["tool_call_id"] == "c1"
         assert mock_handle_function_call.call_args.kwargs["session_id"] == agent.session_id
 
+    def test_telegram_react_can_complete_without_text_response(self, agent):
+        self._setup_agent(agent)
+        agent.valid_tool_names = set(agent.valid_tool_names) | {"telegram_react"}
+        tc = _mock_tool_call(
+            name="telegram_react",
+            arguments='{"emoji": "❤"}',
+            call_id="react-1",
+        )
+        resp = _mock_response(content="", finish_reason="tool_calls", tool_calls=[tc])
+        agent.client.chat.completions.create.side_effect = [resp]
+
+        with (
+            patch("run_agent.handle_function_call", return_value='{"success": true, "emoji": "❤"}') as mock_handle_function_call,
+            patch.object(agent, "_persist_session"),
+            patch.object(agent, "_save_trajectory"),
+            patch.object(agent, "_cleanup_task_resources"),
+        ):
+            result = agent.run_conversation("спасибо")
+
+        assert result["completed"] is True
+        assert result["final_response"] == ""
+        assert result["side_effect_only_response"] is True
+        assert result["turn_exit_reason"] == "side_effect_only_tool_response"
+        assert result["api_calls"] == 1
+        mock_handle_function_call.assert_called_once()
+        assert not any(
+            msg.get("content") == "(empty)"
+            for msg in result["messages"]
+            if isinstance(msg, dict)
+        )
+
+    def test_non_terminal_tool_empty_followup_still_uses_empty_recovery(self, agent):
+        self._setup_agent(agent)
+        agent.valid_tool_names = set(agent.valid_tool_names) | {"web_search"}
+        tc = _mock_tool_call(name="web_search", arguments='{"query": "x"}', call_id="search-1")
+        resp1 = _mock_response(content="", finish_reason="tool_calls", tool_calls=[tc])
+        resp2 = _mock_response(content="", finish_reason="stop")
+        resp3 = _mock_response(content="Search result processed.", finish_reason="stop")
+        agent.client.chat.completions.create.side_effect = [resp1, resp2, resp3]
+
+        with (
+            patch("run_agent.handle_function_call", return_value="search result"),
+            patch.object(agent, "_persist_session"),
+            patch.object(agent, "_save_trajectory"),
+            patch.object(agent, "_cleanup_task_resources"),
+        ):
+            result = agent.run_conversation("search something")
+
+        assert result["completed"] is True
+        assert result["final_response"] == "Search result processed."
+        assert result.get("side_effect_only_response") is False
+        assert result["api_calls"] == 3
+        assert result["turn_exit_reason"] == "text_response(finish_reason=stop)"
+        assert not any(
+            msg.get("_side_effect_only_response") is True
+            for msg in result["messages"]
+            if isinstance(msg, dict)
+        )
+
     def test_request_scoped_api_hooks_fire_for_each_api_call(self, agent):
         self._setup_agent(agent)
         tc = _mock_tool_call(name="web_search", arguments="{}", call_id="c1")

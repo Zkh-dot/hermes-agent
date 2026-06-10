@@ -602,6 +602,27 @@ class PreviewedResponseAgent:
         }
 
 
+class SideEffectOnlyAgent:
+    def __init__(self, **kwargs):
+        self.tools = []
+
+    def run_conversation(self, message, conversation_history=None, task_id=None):
+        return {
+            "final_response": "",
+            "side_effect_only_response": True,
+            "completed": True,
+            "messages": [
+                {"role": "user", "content": message},
+                {
+                    "role": "assistant",
+                    "content": "[side-effect-only response delivered via telegram_react]",
+                    "_side_effect_only_response": True,
+                },
+            ],
+            "api_calls": 1,
+        }
+
+
 class StreamingRefineAgent:
     def __init__(self, **kwargs):
         self.stream_delta_callback = kwargs.get("stream_delta_callback")
@@ -688,6 +709,7 @@ async def _run_with_agent(
     chat_type="group",
     thread_id="17585",
     adapter_cls=ProgressCaptureAdapter,
+    inline_executor=False,
 ):
     if config_data:
         import yaml
@@ -704,7 +726,13 @@ async def _run_with_agent(
 
     adapter = adapter_cls(platform=platform)
     runner = _make_runner(adapter)
+    if inline_executor:
+        async def _run_inline(func, *args):
+            return func(*args)
+
+        runner._run_in_executor_with_context = _run_inline
     gateway_run = importlib.import_module("gateway.run")
+    monkeypatch.setattr(gateway_run, "AIAgent", agent_cls, raising=False)
     if config_data and "streaming" in config_data:
         runner.config.streaming = StreamingConfig.from_dict(config_data["streaming"])
     monkeypatch.setattr(gateway_run, "_hermes_home", tmp_path)
@@ -917,6 +945,26 @@ async def test_run_agent_previewed_final_marks_already_sent(monkeypatch, tmp_pat
 
     assert result.get("already_sent") is True
     assert [call["content"] for call in adapter.sent] == ["You're welcome."]
+
+
+@pytest.mark.asyncio
+async def test_run_agent_preserves_side_effect_only_empty_response(monkeypatch, tmp_path):
+    adapter, result = await _run_with_agent(
+        monkeypatch,
+        tmp_path,
+        SideEffectOnlyAgent,
+        session_id="session-1",
+        platform=Platform.TELEGRAM,
+        chat_id="chat-1",
+        chat_type="dm",
+        thread_id=None,
+        inline_executor=True,
+    )
+
+    assert adapter.sent == []
+    assert result["completed"] is True
+    assert result["final_response"] == ""
+    assert result["side_effect_only_response"] is True
 
 
 @pytest.mark.asyncio

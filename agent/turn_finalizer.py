@@ -335,6 +335,7 @@ def finalize_turn(
         "interrupted": interrupted,
         "response_transformed": _response_transformed,
         "response_previewed": getattr(agent, "_response_was_previewed", False),
+        "side_effect_only_response": getattr(agent, "_side_effect_only_response", False),
         "model": agent.model,
         "provider": agent.provider,
         "base_url": agent.base_url,

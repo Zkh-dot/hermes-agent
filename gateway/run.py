@@ -1755,6 +1755,15 @@ def _normalize_empty_agent_response(
     if response:
         return response
 
+    if (
+        agent_result.get("side_effect_only_response")
+        and agent_result.get("completed") is not False
+        and not agent_result.get("failed")
+        and not agent_result.get("partial")
+        and not agent_result.get("error")
+    ):
+        return ""
+
     if agent_result.get("failed"):
         error_detail = agent_result.get("error", "unknown error")
         error_str = str(error_detail).lower()
@@ -14310,7 +14319,29 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             _resolved_model = getattr(_agent, "model", None) if _agent else None
 
             if not final_response:
+                side_effect_only = bool(result.get("side_effect_only_response"))
                 error_msg = f"⚠️ {result['error']}" if result.get("error") else ""
+                if side_effect_only and not error_msg and result.get("completed") is not False:
+                    return {
+                        "final_response": "",
+                        "side_effect_only_response": True,
+                        "messages": result.get("messages", []),
+                        "api_calls": result.get("api_calls", 0),
+                        "failed": result.get("failed", False),
+                        "partial": result.get("partial", False),
+                        "completed": result.get("completed"),
+                        "interrupted": result.get("interrupted", False),
+                        "interrupt_message": result.get("interrupt_message"),
+                        "error": result.get("error"),
+                        "compression_exhausted": result.get("compression_exhausted", False),
+                        "tools": tools_holder[0] or [],
+                        "history_offset": len(agent_history),
+                        "last_prompt_tokens": _last_prompt_toks,
+                        "input_tokens": _input_toks,
+                        "output_tokens": _output_toks,
+                        "model": _resolved_model,
+                        "context_length": _context_length,
+                    }
                 return {
                     "final_response": error_msg,
                     "messages": result.get("messages", []),
@@ -14488,6 +14519,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 "session_id": effective_session_id,
                 "response_previewed": result.get("response_previewed", False),
                 "response_transformed": result.get("response_transformed", False),
+                "side_effect_only_response": result.get("side_effect_only_response", False),
             }
         
         # Start progress message sender if enabled
