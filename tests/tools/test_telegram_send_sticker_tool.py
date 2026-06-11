@@ -142,13 +142,30 @@ class TestRegistration:
         assert tool is not None
         assert tool.toolset == "messaging"
 
-    def test_in_messaging_toolset_definition(self):
-        # registry.register(toolset="messaging") alone does NOT expose a tool
-        # to sessions — TOOLSETS is the authority for session tool lists.
-        from toolsets import TOOLSETS
+    def test_telegram_sessions_resolve_sticker_and_react(self):
+        # registry.register(toolset=...) alone does NOT expose a tool to
+        # sessions — tools must be in a configurable toolset that passes
+        # the subset-inference against the platform composite. Resolve the
+        # default telegram platform config end-to-end like gateway/run.py.
+        from hermes_cli.tools_config import _get_platform_tools
+        from toolsets import resolve_toolset
 
-        assert "send_sticker" in TOOLSETS["messaging"]["tools"]
-        assert "telegram_react" in TOOLSETS["messaging"]["tools"]
+        tools = set()
+        for ts in _get_platform_tools({}, "telegram"):
+            tools |= set(resolve_toolset(ts))
+        assert "send_sticker" in tools
+        assert "telegram_react" in tools
+        assert "send_message" in tools  # messaging toolset must not regress
+
+    def test_telegram_toolset_restricted_to_telegram_platform(self):
+        from hermes_cli.tools_config import _get_platform_tools
+        from toolsets import resolve_toolset
+
+        tools = set()
+        for ts in _get_platform_tools({}, "slack"):
+            tools |= set(resolve_toolset(ts))
+        assert "send_sticker" not in tools
+        assert "telegram_react" not in tools
 
     def test_schema_requires_file_id(self):
         import tools.telegram_send_sticker_tool  # noqa: F401

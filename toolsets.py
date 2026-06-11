@@ -190,7 +190,13 @@ TOOLSETS = {
     
     "messaging": {
         "description": "Cross-platform messaging: send messages to Telegram, Discord, Slack, SMS, etc.",
-        "tools": ["send_message", "send_sticker", "telegram_react"],
+        "tools": ["send_message"],
+        "includes": []
+    },
+
+    "telegram": {
+        "description": "Telegram-native actions: send stickers by file_id, set emoji reactions on messages",
+        "tools": ["send_sticker", "telegram_react"],
         "includes": []
     },
 
@@ -418,7 +424,10 @@ TOOLSETS = {
 
     "hermes-telegram": {
         "description": "Telegram bot toolset - full access for personal use (terminal has safety checks)",
-        "tools": _HERMES_CORE_TOOLS,
+        "tools": _HERMES_CORE_TOOLS + [
+            "send_sticker",
+            "telegram_react",
+        ],
         "includes": []
     },
     

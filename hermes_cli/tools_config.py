@@ -74,6 +74,7 @@ CONFIGURABLE_TOOLSETS = [
     ("delegation",      "👥 Task Delegation",           "delegate_task"),
     ("cronjob",         "⏰ Cron Jobs",                 "create/list/update/pause/resume/run, with optional attached skills"),
     ("messaging",       "📨 Cross-Platform Messaging",  "send_message"),
+    ("telegram",        "✈️  Telegram Actions",          "send_sticker, telegram_react"),
     ("homeassistant",    "🏠 Home Assistant",           "smart home device control"),
     ("spotify",          "🎵 Spotify",                  "playback, search, playlists, library"),
     ("discord",         "💬 Discord (read/participate)", "fetch messages, search members, create thread"),
@@ -150,6 +151,7 @@ def _xai_credentials_present() -> bool:
 _TOOLSET_PLATFORM_RESTRICTIONS: Dict[str, Set[str]] = {
     "discord": {"discord"},
     "discord_admin": {"discord"},
+    "telegram": {"telegram"},
 }
 
 
