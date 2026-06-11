@@ -13044,6 +13044,12 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             if event_type not in {"tool.started",}:
                 return
 
+            # Silent tools: the sticker/reaction itself lands in the chat —
+            # announcing the call as tool chrome spoils the effect.
+            from agent.display import SILENT_PROGRESS_TOOLS
+            if tool_name in SILENT_PROGRESS_TOOLS:
+                return
+
             # Suppress tool-progress bubbles once the user has sent `stop`.
             # When the LLM response carries N parallel tool calls, the agent
             # fires N "tool.started" events back-to-back before checking for

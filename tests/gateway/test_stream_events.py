@@ -128,6 +128,27 @@ def test_off_mode_emits_nothing():
     assert lines == []
 
 
+def test_silent_tools_emit_no_chrome():
+    # send_sticker / telegram_react ARE the reply (sticker or reaction lands
+    # in the chat) — announcing them as tool chrome spoils the effect.
+    from agent.display import SILENT_PROGRESS_TOOLS
+
+    assert "send_sticker" in SILENT_PROGRESS_TOOLS
+    assert "telegram_react" in SILENT_PROGRESS_TOOLS
+
+    for mode in ("all", "new", "verbose"):
+        lines = []
+        d = GatewayEventDispatcher(
+            _base_adapter(), _FakeSink(),
+            enqueue_tool_line=lines.append, tool_mode=mode,
+        )
+        d.dispatch(ToolCallChunk(tool_name="send_sticker", preview="CAACAgI..."))
+        d.dispatch(ToolCallChunk(tool_name="telegram_react", preview="👍"))
+        d.dispatch(ToolCallChunk(tool_name="terminal", preview="ls"))  # control
+        assert len(lines) == 1, (mode, lines)
+        assert "terminal" in lines[0]
+
+
 def test_adapter_can_eat_tool_chrome():
     """An adapter that returns None from format_tool_event drops the event —
     the 'iMessage can't render tool chrome' case."""

@@ -2019,7 +2019,9 @@ class BasePlatformAdapter(ABC):
         if not isinstance(event, ToolCallChunk):
             return None
 
-        from agent.display import get_tool_emoji
+        from agent.display import SILENT_PROGRESS_TOOLS, get_tool_emoji
+        if event.tool_name in SILENT_PROGRESS_TOOLS:
+            return None
         emoji = get_tool_emoji(event.tool_name, default="⚙️")
 
         if mode == "verbose":

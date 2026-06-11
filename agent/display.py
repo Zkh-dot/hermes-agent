@@ -133,6 +133,12 @@ def get_skin_tool_prefix() -> str:
     return "┊"
 
 
+# Tools whose invocation IS the user-visible reply (the sticker or reaction
+# lands in the chat by itself) — gateway tool-progress chrome must not
+# announce them, or the effect is spoiled.
+SILENT_PROGRESS_TOOLS = frozenset({"send_sticker", "telegram_react"})
+
+
 def get_tool_emoji(tool_name: str, default: str = "⚡") -> str:
     """Get the display emoji for a tool.
 
