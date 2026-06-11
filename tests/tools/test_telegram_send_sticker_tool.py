@@ -142,6 +142,14 @@ class TestRegistration:
         assert tool is not None
         assert tool.toolset == "messaging"
 
+    def test_in_messaging_toolset_definition(self):
+        # registry.register(toolset="messaging") alone does NOT expose a tool
+        # to sessions — TOOLSETS is the authority for session tool lists.
+        from toolsets import TOOLSETS
+
+        assert "send_sticker" in TOOLSETS["messaging"]["tools"]
+        assert "telegram_react" in TOOLSETS["messaging"]["tools"]
+
     def test_schema_requires_file_id(self):
         import tools.telegram_send_sticker_tool  # noqa: F401
         from tools.registry import registry

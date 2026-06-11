@@ -59,9 +59,9 @@ def _get_telegram_token() -> Optional[str]:
         from gateway.config import load_gateway_config, Platform
 
         config = load_gateway_config()
-        for pconfig in config.platforms:
-            if pconfig.platform == Platform.TELEGRAM and pconfig.token:
-                return pconfig.token
+        pconfig = config.platforms.get(Platform.TELEGRAM)
+        if pconfig and pconfig.token:
+            return pconfig.token
     except Exception:
         pass
     return None

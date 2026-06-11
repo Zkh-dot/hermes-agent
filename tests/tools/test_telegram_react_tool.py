@@ -118,6 +118,24 @@ class TestTelegramReactTool:
         assert result["chat_id"] == "999"
 
 
+class TestGetTelegramToken:
+    def test_reads_token_from_dict_shaped_platforms(self):
+        from gateway.config import GatewayConfig, Platform, PlatformConfig
+        from tools.telegram_react_tool import _get_telegram_token
+
+        cfg = GatewayConfig()
+        cfg.platforms[Platform.TELEGRAM] = PlatformConfig(enabled=True, token="123:abc")
+        with patch("gateway.config.load_gateway_config", return_value=cfg):
+            assert _get_telegram_token() == "123:abc"
+
+    def test_returns_none_when_telegram_absent(self):
+        from gateway.config import GatewayConfig
+        from tools.telegram_react_tool import _get_telegram_token
+
+        with patch("gateway.config.load_gateway_config", return_value=GatewayConfig()):
+            assert _get_telegram_token() is None
+
+
 class TestRegistration:
     def test_tool_registered_in_messaging_toolset(self):
         import tools.telegram_react_tool  # noqa: F401
