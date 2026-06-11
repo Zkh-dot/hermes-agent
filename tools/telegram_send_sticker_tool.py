@@ -133,15 +133,17 @@ def send_sticker_tool(args: dict, **kwargs) -> str:
     import asyncio
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # Tool handlers run in worker threads where no event loop exists.
+            result = asyncio.run(_call_send_sticker(token, chat_id, file_id, reply_to))
+        else:
             import concurrent.futures
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(asyncio.run, _call_send_sticker(token, chat_id, file_id, reply_to))
                 result = future.result(timeout=20)
-        else:
-            result = loop.run_until_complete(_call_send_sticker(token, chat_id, file_id, reply_to))
     except Exception as exc:
         result = {"error": f"Async execution failed: {exc}"}
 

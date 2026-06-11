@@ -104,6 +104,29 @@ class TestTelegramReactTool:
         ctx_mock.assert_called_once()
         assert result["success"] is True
 
+    def test_runs_in_worker_thread_without_event_loop(self):
+        # Gateway tool handlers run in worker threads (e.g. 'asyncio_1')
+        # that have no event loop; asyncio.get_event_loop() raises there.
+        import threading
+
+        mock_react = AsyncMock(return_value={"success": True, "emoji": "❤"})
+        results = {}
+
+        def worker():
+            with (
+                patch("tools.telegram_react_tool._get_telegram_token", return_value="tok"),
+                patch("tools.telegram_react_tool._call_set_reaction", mock_react),
+            ):
+                from tools.telegram_react_tool import telegram_react_tool
+                results["r"] = json.loads(
+                    telegram_react_tool({"emoji": "❤", "chat_id": "1", "message_id": "7"})
+                )
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+        assert results["r"].get("success") is True, results["r"]
+
     def test_explicit_args_skip_context_lookup(self):
         mock_react = AsyncMock(return_value={"success": True, "emoji": "❤", "chat_id": "999", "message_id": "7"})
         with (

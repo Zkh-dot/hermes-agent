@@ -144,15 +144,17 @@ def telegram_react_tool(args: dict, **kwargs) -> str:
     import asyncio
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # Tool handlers run in worker threads where no event loop exists.
+            result = asyncio.run(_call_set_reaction(token, chat_id, message_id, emoji))
+        else:
             import concurrent.futures
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(asyncio.run, _call_set_reaction(token, chat_id, message_id, emoji))
                 result = future.result(timeout=15)
-        else:
-            result = loop.run_until_complete(_call_set_reaction(token, chat_id, message_id, emoji))
     except Exception as exc:
         result = {"error": f"Async execution failed: {exc}"}
 

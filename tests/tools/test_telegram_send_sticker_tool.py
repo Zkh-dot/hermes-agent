@@ -119,6 +119,27 @@ class TestSendStickerTool:
         ctx_mock.assert_called_once()
         assert result["success"] is True
 
+    def test_runs_in_worker_thread_without_event_loop(self):
+        # Gateway tool handlers run in worker threads (e.g. 'asyncio_1')
+        # that have no event loop; asyncio.get_event_loop() raises there.
+        import threading
+
+        mock_send = AsyncMock(return_value={"success": True, "message_id": 12})
+        results = {}
+
+        def worker():
+            with (
+                patch("tools.telegram_send_sticker_tool._get_telegram_token", return_value="tok"),
+                patch("tools.telegram_send_sticker_tool._call_send_sticker", mock_send),
+            ):
+                from tools.telegram_send_sticker_tool import send_sticker_tool
+                results["r"] = json.loads(send_sticker_tool({"file_id": "CAACAgI", "chat_id": "1"}))
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+        assert results["r"].get("success") is True, results["r"]
+
     def test_explicit_chat_id_skips_context(self):
         mock_send = AsyncMock(return_value={"success": True, "message_id": 11})
         with (
