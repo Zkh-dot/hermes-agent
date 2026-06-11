@@ -70,13 +70,28 @@ def _load_config() -> dict:
 # Tool schemas
 # ---------------------------------------------------------------------------
 
+_KIND_HINT = (
+    "Optional kind filter. Known values: "
+    "'digest' (rolling snapshot of current work picture from Claude Code memory), "
+    "'tickets' (current sprint tickets from Yandex Tracker), "
+    "'calendar' (meetings in the next 24 hours from Yandex Calendar). "
+    "Each is a single rolling entry; omit to scan all memories."
+)
+
 PROFILE_SCHEMA = {
     "name": "mem0_profile",
     "description": (
-        "Retrieve all stored memories about the user — preferences, facts, "
-        "project context. Fast, no reranking. Use at conversation start."
+        "Retrieve stored memories about the user — preferences, facts, project context. "
+        "Fast, no reranking. Use at conversation start. "
+        "Pass kind='digest'/'tickets'/'calendar' to fetch the latest work snapshot directly."
     ),
-    "parameters": {"type": "object", "properties": {}, "required": []},
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "kind": {"type": "string", "description": _KIND_HINT},
+        },
+        "required": [],
+    },
 }
 
 SEARCH_SCHEMA = {
@@ -91,6 +106,7 @@ SEARCH_SCHEMA = {
             "query": {"type": "string", "description": "What to search for."},
             "rerank": {"type": "boolean", "description": "Enable reranking for precision (default: false)."},
             "top_k": {"type": "integer", "description": "Max results (default: 10, max: 50)."},
+            "kind": {"type": "string", "description": _KIND_HINT},
         },
         "required": ["query"],
     },
@@ -141,7 +157,7 @@ class Mem0MemoryProvider(MemoryProvider):
 
     def is_available(self) -> bool:
         cfg = _load_config()
-        return bool(cfg.get("api_key"))
+        return bool(cfg.get("api_key")) or bool(cfg.get("vector_store"))
 
     def save_config(self, values, hermes_home):
         """Write config to $HERMES_HOME/mem0.json."""
@@ -172,8 +188,15 @@ class Mem0MemoryProvider(MemoryProvider):
             if self._client is not None:
                 return self._client
             try:
-                from mem0 import MemoryClient
-                self._client = MemoryClient(api_key=self._api_key)
+                cfg = self._config or _load_config()
+                if not cfg.get("api_key") and cfg.get("vector_store"):
+                    # Self-hosted mode: Memory library with custom Qdrant/embedder config
+                    from mem0 import Memory
+                    mem0_cfg = {k: cfg[k] for k in ("vector_store", "embedder", "llm") if k in cfg}
+                    self._client = Memory.from_config(mem0_cfg)
+                else:
+                    from mem0 import MemoryClient
+                    self._client = MemoryClient(api_key=cfg.get("api_key", ""))
                 return self._client
             except ImportError:
                 raise RuntimeError("mem0 package not installed. Run: pip install mem0ai")
@@ -232,7 +255,11 @@ class Mem0MemoryProvider(MemoryProvider):
             "# Mem0 Memory\n"
             f"Active. User: {self._user_id}.\n"
             "Use mem0_search to find memories, mem0_conclude to store facts, "
-            "mem0_profile for a full overview."
+            "mem0_profile for a full overview.\n"
+            "Snapshots maintained by an external pipeline (yara-sync) are tagged by kind: "
+            "'digest' (current work picture), 'tickets' (active sprint), "
+            "'calendar' (next 24h meetings). Pass kind='digest'|'tickets'|'calendar' to "
+            "mem0_profile or mem0_search to target one of them directly."
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
@@ -310,8 +337,14 @@ class Mem0MemoryProvider(MemoryProvider):
             return tool_error(str(e))
 
         if tool_name == "mem0_profile":
+            filters = dict(self._read_filters())
+            if args.get("kind"):
+                # Snapshot kinds (digest/tickets/calendar) are written by an external
+                # pipeline under the configured user_id, not the gateway-derived one.
+                filters["user_id"] = self._config.get("user_id") or self._user_id
+                filters["kind"] = args["kind"]
             try:
-                memories = self._unwrap_results(client.get_all(filters=self._read_filters()))
+                memories = self._unwrap_results(client.get_all(filters=filters))
                 self._record_success()
                 if not memories:
                     return json.dumps({"result": "No memories stored yet."})
@@ -327,10 +360,14 @@ class Mem0MemoryProvider(MemoryProvider):
                 return tool_error("Missing required parameter: query")
             rerank = args.get("rerank", False)
             top_k = min(int(args.get("top_k", 10)), 50)
+            filters = dict(self._read_filters())
+            if args.get("kind"):
+                filters["user_id"] = self._config.get("user_id") or self._user_id
+                filters["kind"] = args["kind"]
             try:
                 results = self._unwrap_results(client.search(
                     query=query,
-                    filters=self._read_filters(),
+                    filters=filters,
                     rerank=rerank,
                     top_k=top_k,
                 ))
