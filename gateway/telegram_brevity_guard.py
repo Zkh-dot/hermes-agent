@@ -115,6 +115,56 @@ def _has_fenced_code_block(text: str) -> bool:
     return bool(re.search(r"```[\s\S]*?```", text))
 
 
+def _line_looks_like_code(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if re.match(
+        r"^(async\s+def|def|class|if|elif|else:|for|while|try:|except|finally:|with|return|raise|"
+        r"import|from|const|let|var|function|export|interface|type|public|private|protected|func|package)\b",
+        stripped,
+    ):
+        return True
+    if re.match(r"^[\w.$\[\]'\"-]+\s*(=|:=|\+=|-=|\*=|/=)\s*\S", stripped):
+        return True
+    if re.search(r"(=>|->|==|!=|<=|>=|\{|\}|;)", stripped):
+        return True
+    if re.search(r"\w+\([^)]*\)\s*(:|\{|;)?$", stripped):
+        return True
+    return False
+
+
+def _has_indented_code_block(text: str) -> bool:
+    lines = text.splitlines()
+    indented_code_lines = [
+        line
+        for line in lines
+        if (line.startswith("    ") or line.startswith("\t")) and _line_looks_like_code(line)
+    ]
+    return len(indented_code_lines) >= 3
+
+
+def _looks_like_plain_code_snippet(text: str) -> bool:
+    lines = [line for line in text.splitlines() if line.strip()]
+    if len(lines) < 5:
+        return False
+    code_lines = sum(1 for line in lines if _line_looks_like_code(line))
+    structural_lines = sum(
+        1
+        for line in lines
+        if re.match(
+            r"^\s*(async\s+def|def|class|function|if|for|while|try|except|import|from|const|let|var|"
+            r"export|interface|type|func|package)\b",
+            line,
+        )
+    )
+    return code_lines >= 4 and code_lines / len(lines) >= 0.6 and structural_lines >= 1
+
+
+def _looks_like_code_block_or_snippet(text: str) -> bool:
+    return _has_fenced_code_block(text) or _has_indented_code_block(text) or _looks_like_plain_code_snippet(text)
+
+
 def _user_asked_for_detail(user_message: str) -> bool:
     normalized = (user_message or "").lower()
     return any(re.search(pattern, normalized, flags=re.IGNORECASE) for pattern in _DETAIL_PATTERNS)
@@ -157,6 +207,15 @@ def _looks_like_yamlish_multiline(text: str) -> bool:
     return key_value_lines >= 3 and (key_value_lines + list_lines) / len(lines) >= 0.6
 
 
+def _looks_like_python_traceback(text: str) -> bool:
+    if "Traceback (most recent call last):" not in text:
+        return False
+    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+    has_frame = any(re.match(r'^\s*File "[^"]+", line \d+', line) for line in lines)
+    has_exception = any(re.match(r"^\s*[\w.]+(?:Error|Exception|Warning|Interrupt|Exit|Failure)\b", line) for line in lines)
+    return has_frame and has_exception
+
+
 def _looks_like_log_or_command_output(text: str) -> bool:
     lines = [line for line in text.splitlines() if line.strip()]
     if len(lines) < 4:
@@ -177,6 +236,7 @@ def _looks_like_exact_content(text: str) -> bool:
         _looks_like_diff_or_patch(text)
         or _looks_like_json(text)
         or _looks_like_yamlish_multiline(text)
+        or _looks_like_python_traceback(text)
         or _looks_like_log_or_command_output(text)
     )
 
@@ -203,7 +263,7 @@ def should_skip_telegram_brevity_guard(
     if config["skip_media_messages"] and _looks_like_media_message(text):
         return True, "media_message"
 
-    if config["skip_code_blocks"] and _has_fenced_code_block(text):
+    if config["skip_code_blocks"] and _looks_like_code_block_or_snippet(text):
         return True, "code_block"
 
     if config["skip_if_user_asked_detail"] and _user_asked_for_detail(user_message):
