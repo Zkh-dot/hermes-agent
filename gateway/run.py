@@ -9811,27 +9811,6 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     else:
                         response = f"💭 **Reasoning:**\n```\n{display_reasoning}\n```\n\n{response}"
 
-            # Runtime-metadata footer — only on the FINAL message of the turn.
-            # Off by default (display.runtime_footer.enabled=false).  When
-            # streaming already delivered the body, we can't mutate the sent
-            # text, so we fire a separate trailing send below.
-            _footer_line = ""
-            try:
-                from gateway.runtime_footer import build_footer_line as _bfl
-                _footer_line = _bfl(
-                    user_config=_load_gateway_config(),
-                    platform_key=_platform_config_key(source.platform),
-                    model=agent_result.get("model"),
-                    context_tokens=agent_result.get("last_prompt_tokens", 0) or 0,
-                    context_length=agent_result.get("context_length") or None,
-                    cwd=os.environ.get("TERMINAL_CWD", ""),
-                )
-            except Exception as _footer_err:
-                logger.debug("runtime_footer build failed: %s", _footer_err)
-                _footer_line = ""
-            if _footer_line and response and not agent_result.get("already_sent") and not _intentional_silence:
-                response = f"{response}\n\n{_footer_line}"
-
             # Emit agent:end hook
             await self.hooks.emit("agent:end", {
                 **hook_ctx,
@@ -10106,36 +10085,71 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             _already_sent = bool(agent_result.get("already_sent"))
             if response and not _intentional_silence and not _already_sent:
                 try:
-                    from gateway.telegram_brevity_guard import (
-                        maybe_rewrite_for_telegram_brevity,
-                    )
-
-                    _brevity_cfg = _load_gateway_config()
-                    _brevity_main_runtime = None
-                    try:
-                        _brevity_model, _brevity_runtime = self._resolve_session_agent_runtime(
-                            source=source,
-                            user_config=_brevity_cfg,
-                        )
-                        _brevity_main_runtime = {
-                            **(_brevity_runtime or {}),
-                            "model": agent_result.get("model") or _brevity_model,
-                        }
-                    except Exception:
-                        logger.debug(
-                            "Telegram brevity guard main-runtime resolution failed",
-                            exc_info=True,
+                    if source.platform == Platform.TELEGRAM:
+                        from gateway.telegram_brevity_guard import (
+                            maybe_rewrite_for_telegram_brevity,
+                            should_skip_telegram_brevity_guard,
                         )
 
-                    response = await maybe_rewrite_for_telegram_brevity(
-                        platform=source.platform,
-                        outgoing_text=response,
-                        user_message=message_text,
-                        user_config=_brevity_cfg,
-                        main_runtime=_brevity_main_runtime,
-                    )
+                        _brevity_cfg = _load_gateway_config()
+                        _brevity_skip, _brevity_reason = should_skip_telegram_brevity_guard(
+                            source.platform,
+                            response,
+                            message_text,
+                            _brevity_cfg,
+                        )
+                        if _brevity_skip:
+                            logger.debug(
+                                "Skipping Telegram brevity guard before runtime resolution: %s",
+                                _brevity_reason,
+                            )
+                        else:
+                            _brevity_main_runtime = None
+                            try:
+                                _brevity_model, _brevity_runtime = self._resolve_session_agent_runtime(
+                                    source=source,
+                                    user_config=_brevity_cfg,
+                                )
+                                _brevity_main_runtime = {
+                                    **(_brevity_runtime or {}),
+                                    "model": agent_result.get("model") or _brevity_model,
+                                }
+                            except Exception:
+                                logger.debug(
+                                    "Telegram brevity guard main-runtime resolution failed",
+                                    exc_info=True,
+                                )
+
+                            response = await maybe_rewrite_for_telegram_brevity(
+                                platform=source.platform,
+                                outgoing_text=response,
+                                user_message=message_text,
+                                user_config=_brevity_cfg,
+                                main_runtime=_brevity_main_runtime,
+                            )
                 except Exception:
                     logger.debug("Telegram brevity guard failed before delivery", exc_info=True)
+
+            # Runtime-metadata footer — only on the FINAL message of the turn.
+            # Off by default (display.runtime_footer.enabled=false).  When
+            # streaming already delivered the body, we can't mutate the sent
+            # text, so we fire a separate trailing send below.
+            _footer_line = ""
+            try:
+                from gateway.runtime_footer import build_footer_line as _bfl
+                _footer_line = _bfl(
+                    user_config=_load_gateway_config(),
+                    platform_key=_platform_config_key(source.platform),
+                    model=agent_result.get("model"),
+                    context_tokens=agent_result.get("last_prompt_tokens", 0) or 0,
+                    context_length=agent_result.get("context_length") or None,
+                    cwd=os.environ.get("TERMINAL_CWD", ""),
+                )
+            except Exception as _footer_err:
+                logger.debug("runtime_footer build failed: %s", _footer_err)
+                _footer_line = ""
+            if _footer_line and response and not agent_result.get("already_sent") and not _intentional_silence:
+                response = f"{response}\n\n{_footer_line}"
 
             # Auto voice reply: send TTS audio before the text response
             if self._should_send_voice_reply(event, response, agent_messages, already_sent=_already_sent):
