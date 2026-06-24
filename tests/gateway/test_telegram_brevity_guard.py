@@ -1,0 +1,212 @@
+"""Tests for Telegram final-response brevity guard."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+
+from gateway.config import Platform
+from gateway.telegram_brevity_guard import (
+    build_telegram_brevity_prompt,
+    maybe_rewrite_for_telegram_brevity,
+    should_skip_telegram_brevity_guard,
+)
+
+
+def _cfg(**overrides):
+    guard = {
+        "enabled": True,
+        "soft_chars": 80,
+        "hard_chars": 160,
+        "target_chars": 60,
+        "skip_if_user_asked_detail": True,
+        "skip_code_blocks": True,
+        "skip_media_messages": True,
+    }
+    guard.update(overrides)
+    return {"telegram": {"brevity_guard": guard}}
+
+
+def _long_text(marker: str = "важная деталь") -> str:
+    return (
+        f"Вердикт: делаем вариант B, потому что {marker}. "
+        "Файл config.yaml менять не надо. Команда: hermes gateway restart. "
+        "Риск: не трогать MEDIA:/tmp/report.png руками. "
+    ) * 4
+
+
+class _FakeMessage:
+    def __init__(self, content: str):
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content: str):
+        self.message = _FakeMessage(content)
+
+
+class _FakeResponse:
+    def __init__(self, content: str):
+        self.choices = [_FakeChoice(content)]
+
+
+@pytest.mark.asyncio
+async def test_short_telegram_message_is_unchanged():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("rewritten")
+
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text="Коротко: готово.",
+        user_message="что там?",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == "Коротко: готово."
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_long_telegram_message_is_rewritten():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("Вариант B. config.yaml не трогаем. `hermes gateway restart`. Разверну, если надо.")
+
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=_long_text("не ломает кэш"),
+        user_message="что делать?",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result.startswith("Вариант B.")
+    assert "hermes gateway restart" in result
+    assert len(calls) == 1
+    assert calls[0]["task"] == "telegram_brevity_guard"
+
+
+@pytest.mark.asyncio
+async def test_long_detail_request_is_unchanged():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("short")
+
+    draft = _long_text()
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=draft,
+        user_message="подробно распиши полный анализ",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == draft
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_long_code_block_is_unchanged_when_configured():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("short")
+
+    draft = "Вот файл:\n\n```python\n" + "\n".join(f"print({i})" for i in range(80)) + "\n```"
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=draft,
+        user_message="покажи код",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == draft
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_non_telegram_platform_is_unchanged():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("short")
+
+    draft = _long_text()
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.DISCORD,
+        outgoing_text=draft,
+        user_message="что делать?",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == draft
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_rewrite_failure_delivers_original():
+    async def failing_llm(**kwargs):
+        raise RuntimeError("no auxiliary provider")
+
+    draft = _long_text()
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=draft,
+        user_message="что делать?",
+        user_config=_cfg(),
+        llm_call=failing_llm,
+    )
+
+    assert result == draft
+
+
+def test_prompt_preserves_key_facts_and_hard_instruction():
+    draft = (
+        "Итог: выбрать вариант B. Число: 42. Файл: config.yaml. "
+        "Команда: `hermes gateway restart`."
+    )
+
+    messages = build_telegram_brevity_prompt(
+        user_message="что делать?",
+        draft_answer=draft,
+        target_chars=90,
+        hard_limit=True,
+    )
+
+    combined = "\n".join(m["content"] for m in messages)
+    assert "config.yaml" in combined
+    assert "hermes gateway restart" in combined
+    assert "42" in combined
+    assert "far too long for Telegram" in combined
+    assert "<= 90 chars" in combined
+
+
+def test_exact_content_skips_patch_and_json():
+    patch_text = "diff --git a/a.py b/a.py\n@@ -1 +1 @@\n-old\n+new\n" + ("x" * 120)
+    json_text = '{"status": "ok", "items": [1, 2, 3]}' + (" " * 120)
+
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=patch_text,
+        user_message="пришли diff",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=json_text,
+        user_message="пришли json",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
