@@ -161,6 +161,38 @@ async def test_long_indented_code_block_is_unchanged_when_configured():
 
 
 @pytest.mark.asyncio
+async def test_plain_assignment_call_code_snippet_is_unchanged_when_configured():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("short")
+
+    draft = "\n".join(
+        [
+            "config = load_config(path)",
+            "client = make_client(config)",
+            'result = client.fetch("telegram")',
+            "print(result)",
+            "config = load_config(path)",
+            "client = make_client(config)",
+            'result = client.fetch("telegram")',
+            "print(result)",
+        ]
+    )
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=draft,
+        user_message="покажи скрипт",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == draft
+    assert calls == []
+
+
+@pytest.mark.asyncio
 async def test_long_media_marker_is_unchanged_when_configured():
     calls = []
 
@@ -267,6 +299,22 @@ def test_exact_content_skips_python_traceback():
         '  File "/tmp/app.py", line 8, in main\n'
         "    raise RuntimeError('boom')\n"
         "RuntimeError: boom\n"
+    ) + ("x" * 120)
+
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=traceback_text,
+        user_message="что за ошибка?",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
+
+
+def test_exact_content_skips_stop_iteration_traceback():
+    traceback_text = (
+        "Traceback (most recent call last):\n"
+        '  File "/tmp/app.py", line 12, in <module>\n'
+        "    next(items)\n"
+        "StopIteration\n"
     ) + ("x" * 120)
 
     assert should_skip_telegram_brevity_guard(

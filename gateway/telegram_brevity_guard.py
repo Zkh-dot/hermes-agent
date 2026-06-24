@@ -134,6 +134,15 @@ def _line_looks_like_code(line: str) -> bool:
     return False
 
 
+def _line_looks_like_assignment_or_call(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if re.match(r"^[\w.$\[\]'\"-]+\s*(=|:=|\+=|-=|\*=|/=)\s*\S", stripped):
+        return True
+    return bool(re.match(r"^[\w.]+\([^)]*\)\s*(#.*)?$", stripped))
+
+
 def _has_indented_code_block(text: str) -> bool:
     lines = text.splitlines()
     indented_code_lines = [
@@ -158,7 +167,10 @@ def _looks_like_plain_code_snippet(text: str) -> bool:
             line,
         )
     )
-    return code_lines >= 4 and code_lines / len(lines) >= 0.6 and structural_lines >= 1
+    assignment_or_call_lines = sum(1 for line in lines if _line_looks_like_assignment_or_call(line))
+    if code_lines >= 4 and code_lines / len(lines) >= 0.6 and structural_lines >= 1:
+        return True
+    return assignment_or_call_lines >= 6 and assignment_or_call_lines / len(lines) >= 0.75
 
 
 def _looks_like_code_block_or_snippet(text: str) -> bool:
@@ -212,7 +224,8 @@ def _looks_like_python_traceback(text: str) -> bool:
         return False
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
     has_frame = any(re.match(r'^\s*File "[^"]+", line \d+', line) for line in lines)
-    has_exception = any(re.match(r"^\s*[\w.]+(?:Error|Exception|Warning|Interrupt|Exit|Failure)\b", line) for line in lines)
+    final_line = lines[-1].strip() if lines else ""
+    has_exception = bool(re.match(r"^[A-Za-z_][\w.]*(:\s+.*)?$", final_line))
     return has_frame and has_exception
 
 
