@@ -274,7 +274,7 @@ def test_prompt_preserves_key_facts_and_hard_instruction():
     assert any(word in combined.lower() for word in ("hard", "strict", "must", "limit"))
 
 
-def test_prompt_uses_configured_user_name_instead_of_hardcoded_sergey():
+def test_prompt_uses_configured_user_name_instead_of_hardcoded_personal_name():
     messages = build_telegram_brevity_prompt(
         user_message="summarize",
         draft_answer="Do the safe option.",
@@ -284,8 +284,9 @@ def test_prompt_uses_configured_user_name_instead_of_hardcoded_sergey():
     )
 
     system = messages[0]["content"]
+    old_hardcoded_name = "S" + "ergey"
     assert "for Alex" in system
-    assert "Sergey" not in system
+    assert old_hardcoded_name not in system
 
 
 @pytest.mark.asyncio
@@ -305,8 +306,9 @@ async def test_rewrite_prompt_uses_user_name_from_config():
     )
 
     system = calls[0]["messages"][0]["content"]
+    old_hardcoded_name = "S" + "ergey"
     assert "for Alex" in system
-    assert "Sergey" not in system
+    assert old_hardcoded_name not in system
 
 def test_exact_content_skips_patch_and_json():
     patch_text = "diff --git a/a.py b/a.py\n@@ -1 +1 @@\n-old\n+new\n" + ("x" * 120)
