@@ -340,6 +340,37 @@ def test_exact_content_skips_single_line_shell_command():
     )[0] is True
 
 
+def test_exact_content_skips_short_intro_plus_shell_command():
+    command = (
+        "Вот команда:\n\n"
+        "curl -H 'Authorization: Bearer token' "
+        "https://example.com/api/items?project=hermes-agent&limit=100 "
+        "--data '{\"filename\":\"config.yaml\",\"command\":\"hermes gateway restart\"}'"
+    )
+
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=command,
+        user_message="пришли команду",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
+
+
+def test_exact_content_skips_labeled_inline_shell_command():
+    command = (
+        "Command: `curl -H 'Authorization: Bearer token' "
+        "https://example.com/api/items?project=hermes-agent&limit=100 "
+        "--data '{\"filename\":\"config.yaml\",\"command\":\"hermes gateway restart\"}'`"
+    )
+
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=command,
+        user_message="send the command",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
+
+
 def test_exact_content_skips_single_line_sql():
     sql = (
         "SELECT id, filename, command, created_at FROM gateway_events "

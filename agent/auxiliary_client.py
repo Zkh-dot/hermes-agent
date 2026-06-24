@@ -5341,6 +5341,7 @@ def call_llm(
             api_key=resolved_api_key,
             api_mode=resolved_api_mode,
             main_runtime=main_runtime,
+            task=task,
         )
         if client is None:
             # When the user explicitly chose a non-OpenRouter provider but no
@@ -5850,6 +5851,8 @@ async def async_call_llm(
             base_url=resolved_base_url,
             api_key=resolved_api_key,
             api_mode=resolved_api_mode,
+            main_runtime=main_runtime,
+            task=task,
         )
         if client is None:
             _explicit = (resolved_provider or "").strip().lower()

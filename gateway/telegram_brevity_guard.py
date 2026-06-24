@@ -143,9 +143,35 @@ def _line_looks_like_assignment_or_call(line: str) -> bool:
     return bool(re.match(r"^[\w.]+\([^)]*\)\s*(#.*)?$", stripped))
 
 
-def _looks_like_single_line_exact_command_or_code(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped or "\n" in stripped or len(stripped) < 80:
+def _is_short_exact_content_intro(line: str) -> bool:
+    stripped = line.strip().strip("`").strip()
+    if not stripped or len(stripped) > 80:
+        return False
+    return bool(
+        re.match(
+            r"^(?:вот\s+)?(?:команда|command|run|запусти|sql|query|запрос|пример|example|use|используй)\s*:?\s*$",
+            stripped,
+            flags=re.IGNORECASE,
+        )
+        or stripped.endswith(":")
+    )
+
+
+def _strip_exact_line_wrappers(line: str) -> str:
+    stripped = line.strip()
+    stripped = re.sub(r"^\s*(?:[-*]\s+|>\s*)", "", stripped)
+    stripped = re.sub(
+        r"^(?:вот\s+)?(?:команда|command|run|запусти|sql|query|запрос|пример|example|use|используй)\s*:\s*",
+        "",
+        stripped,
+        flags=re.IGNORECASE,
+    )
+    return stripped.strip().strip("`").strip()
+
+
+def _single_line_looks_like_exact_command_or_code(line: str) -> bool:
+    stripped = _strip_exact_line_wrappers(line)
+    if not stripped or len(stripped) < 80:
         return False
 
     command = re.sub(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S+)\s+)+", "", stripped)
@@ -196,6 +222,25 @@ def _looks_like_single_line_exact_command_or_code(text: str) -> bool:
         return True
 
     return _line_looks_like_assignment_or_call(stripped) and bool(re.search(r"(\(|\)|=|:=)", stripped))
+
+
+def _looks_like_single_line_exact_command_or_code(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+    if "\n" not in stripped:
+        return _single_line_looks_like_exact_command_or_code(stripped)
+
+    lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    if len(lines) > 3:
+        return False
+    exact_lines = [line for line in lines if _single_line_looks_like_exact_command_or_code(line)]
+    if len(exact_lines) != 1:
+        return False
+    return all(
+        line in exact_lines or _is_short_exact_content_intro(line)
+        for line in lines
+    )
 
 
 def _has_indented_code_block(text: str) -> bool:

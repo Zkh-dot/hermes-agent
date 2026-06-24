@@ -2227,6 +2227,37 @@ class TestKimiTemperatureOmitted:
         assert kwargs["model"] == "kimi-for-coding"
         assert "temperature" not in kwargs
 
+    @pytest.mark.asyncio
+    async def test_async_call_passes_main_runtime_to_first_client_resolution(self):
+        client = MagicMock()
+        client.base_url = "https://openrouter.ai/api/v1"
+        response = MagicMock()
+        client.chat.completions.create = AsyncMock(return_value=response)
+        main_runtime = {
+            "provider": "custom",
+            "model": "runtime-model",
+            "base_url": "https://runtime.example/v1",
+            "api_key": "sk-runtime",
+            "api_mode": "chat_completions",
+        }
+
+        with patch(
+            "agent.auxiliary_client._get_cached_client",
+            return_value=(client, "runtime-model"),
+        ) as mock_get_client, patch(
+            "agent.auxiliary_client._resolve_task_provider_model",
+            return_value=("auto", "", None, None, None),
+        ):
+            result = await async_call_llm(
+                task="telegram_brevity_guard",
+                messages=[{"role": "user", "content": "hello"}],
+                main_runtime=main_runtime,
+            )
+
+        assert result is response
+        assert mock_get_client.call_args.kwargs["main_runtime"] is main_runtime
+        assert mock_get_client.call_args.kwargs["task"] == "telegram_brevity_guard"
+
     @pytest.mark.parametrize(
         "model",
         [
