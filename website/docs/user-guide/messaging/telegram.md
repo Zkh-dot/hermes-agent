@@ -954,6 +954,47 @@ gateway:
 
 **What if a draft frame fails?** Any failure (transient network error, server-side rejection, older python-telegram-bot install) flips that response back to the edit-based path for the rest of the stream. The next response gets a fresh attempt.
 
+## Optional Brevity Guard for Long Replies
+
+Telegram DMs are usually read on a phone, so Hermes can optionally shorten long
+final agent replies right before delivery. The full assistant answer stays in
+the session transcript; only the outgoing Telegram text is rewritten. The guard
+is conservative: it skips media markers, fenced code blocks, diffs, JSON/YAML,
+log-like output, and requests where you explicitly asked for a detailed answer.
+
+This is disabled by default. Enable it in `~/.hermes/config.yaml`:
+
+```yaml
+telegram:
+  brevity_guard:
+    enabled: true
+    soft_chars: 1600
+    hard_chars: 3000
+    target_chars: 900
+    skip_if_user_asked_detail: true
+    skip_code_blocks: true
+    skip_media_messages: true
+```
+
+The config lives under `telegram.brevity_guard` because Hermes stores
+Telegram-specific behavior there. `gateway.platforms.telegram.extra` is reserved
+for adapter transport/rendering details such as rich messages and local Bot API
+URLs.
+
+By default the rewrite uses Hermes' auxiliary model routing. To force a cheap
+or local model for this rewrite pass:
+
+```yaml
+auxiliary:
+  telegram_brevity_guard:
+    provider: auto
+    model: ""
+    timeout: 30
+```
+
+If no auxiliary model is available, or if the rewrite fails, Hermes sends the
+original answer.
+
 ## Rendering: Rich Messages, Tables and Link Previews
 
 **Rich Messages (Bot API 10.1).** Final replies that contain constructs the legacy MarkdownV2 path degrades — tables, task lists, collapsible `<details>`, and block math — are sent with Telegram's native [`sendRichMessage`](https://core.telegram.org/bots/api#sendrichmessage) using the agent's **raw markdown**, so they render natively with no client-side flattening. During streaming, the final answer is delivered by **editing the existing preview in place** via `editMessageText`'s `rich_message` parameter — no second message, no delete, so there is no duplicate-delivery flicker at the end of a turn. In DMs the live streaming preview also uses `sendRichMessageDraft`, so the animated draft matches the final rich message. Ordinary replies (plain prose, bold/italic, simple lists) stay on the MarkdownV2 path for consistent font weight and spacing across clients.
