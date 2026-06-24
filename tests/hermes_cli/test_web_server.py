@@ -35,6 +35,12 @@ _EXAMPLE_PLUGIN_FIXTURE = (
 )
 
 
+def test_telegram_brevity_guard_is_dashboard_aux_task_slot():
+    from hermes_cli.web_server import _AUX_TASK_SLOTS
+
+    assert "telegram_brevity_guard" in _AUX_TASK_SLOTS
+
+
 @pytest.fixture
 def _install_example_plugin(_isolate_hermes_home):
     """Drop the example-dashboard fixture into the per-test HERMES_HOME

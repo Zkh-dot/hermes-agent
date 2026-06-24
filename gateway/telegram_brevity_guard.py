@@ -143,6 +143,61 @@ def _line_looks_like_assignment_or_call(line: str) -> bool:
     return bool(re.match(r"^[\w.]+\([^)]*\)\s*(#.*)?$", stripped))
 
 
+def _looks_like_single_line_exact_command_or_code(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or "\n" in stripped or len(stripped) < 80:
+        return False
+
+    command = re.sub(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S+)\s+)+", "", stripped)
+    first_token = command.split(None, 1)[0].strip("`\"'")
+    command_names = {
+        "arc",
+        "awk",
+        "cat",
+        "curl",
+        "docker",
+        "git",
+        "grep",
+        "hermes",
+        "journalctl",
+        "jq",
+        "kubectl",
+        "mysql",
+        "node",
+        "npm",
+        "npx",
+        "openssl",
+        "pip",
+        "pip3",
+        "pnpm",
+        "psql",
+        "python",
+        "python3",
+        "rg",
+        "rsync",
+        "scp",
+        "sed",
+        "sqlite3",
+        "ssh",
+        "systemctl",
+        "wget",
+        "ya",
+        "yarn",
+    }
+    if first_token in command_names or first_token.startswith(("./", "../", "/")):
+        return True
+
+    lowered = stripped.lower()
+    if re.match(r"^\s*(select\b.+\bfrom\b|insert\s+into\b|update\b.+\bset\b|delete\s+from\b)", lowered):
+        return True
+    if re.match(r"^\s*(create|alter|drop)\s+(table|index|view|schema)\b", lowered):
+        return True
+    if re.match(r"^\s*with\b.+\bselect\b.+\bfrom\b", lowered):
+        return True
+
+    return _line_looks_like_assignment_or_call(stripped) and bool(re.search(r"(\(|\)|=|:=)", stripped))
+
+
 def _has_indented_code_block(text: str) -> bool:
     lines = text.splitlines()
     indented_code_lines = [
@@ -251,6 +306,7 @@ def _looks_like_exact_content(text: str) -> bool:
         or _looks_like_yamlish_multiline(text)
         or _looks_like_python_traceback(text)
         or _looks_like_log_or_command_output(text)
+        or _looks_like_single_line_exact_command_or_code(text)
     )
 
 

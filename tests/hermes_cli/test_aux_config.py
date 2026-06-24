@@ -42,6 +42,11 @@ def test_title_generation_present_in_default_config():
     assert tg["extra_body"] == {}
 
 
+def test_telegram_brevity_guard_present_in_auxiliary_model_config():
+    assert "telegram_brevity_guard" in DEFAULT_CONFIG["auxiliary"]
+    assert "telegram_brevity_guard" in {key for key, _name, _desc in _AUX_TASKS}
+
+
 def test_session_search_no_longer_appears_in_auxiliary_model_config():
     """session_search is a direct DB-backed tool, not an auxiliary LLM task."""
     assert "session_search" not in DEFAULT_CONFIG["auxiliary"]
