@@ -10098,8 +10098,46 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 )
                 response = ""
 
-            # Auto voice reply: send TTS audio before the text response
+            # Delivery-only Telegram compaction. This runs after transcript
+            # persistence so the stored assistant turn remains the full model
+            # answer, and before final text delivery so Telegram receives the
+            # shorter mobile-friendly version. Streaming already delivered its
+            # text, so late rewriting is intentionally skipped there.
             _already_sent = bool(agent_result.get("already_sent"))
+            if response and not _intentional_silence and not _already_sent:
+                try:
+                    from gateway.telegram_brevity_guard import (
+                        maybe_rewrite_for_telegram_brevity,
+                    )
+
+                    _brevity_cfg = _load_gateway_config()
+                    _brevity_main_runtime = None
+                    try:
+                        _brevity_model, _brevity_runtime = self._resolve_session_agent_runtime(
+                            source=source,
+                            user_config=_brevity_cfg,
+                        )
+                        _brevity_main_runtime = {
+                            **(_brevity_runtime or {}),
+                            "model": agent_result.get("model") or _brevity_model,
+                        }
+                    except Exception:
+                        logger.debug(
+                            "Telegram brevity guard main-runtime resolution failed",
+                            exc_info=True,
+                        )
+
+                    response = await maybe_rewrite_for_telegram_brevity(
+                        platform=source.platform,
+                        outgoing_text=response,
+                        user_message=message_text,
+                        user_config=_brevity_cfg,
+                        main_runtime=_brevity_main_runtime,
+                    )
+                except Exception:
+                    logger.debug("Telegram brevity guard failed before delivery", exc_info=True)
+
+            # Auto voice reply: send TTS audio before the text response
             if self._should_send_voice_reply(event, response, agent_messages, already_sent=_already_sent):
                 await self._send_voice_reply(event, response)
 

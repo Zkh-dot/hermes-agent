@@ -1462,6 +1462,14 @@ DEFAULT_CONFIG = {
             "extra_body": {},
             "language": "",
         },
+        "telegram_brevity_guard": {
+            "provider": "auto",
+            "model": "",
+            "base_url": "",
+            "api_key": "",
+            "timeout": 30,
+            "extra_body": {},
+        },
         "tts_audio_tags": {
             "provider": "auto",
             "model": "",
@@ -2216,6 +2224,15 @@ DEFAULT_CONFIG = {
         "reactions": False,            # Add 👀/✅/❌ reactions to messages during processing
         "channel_prompts": {},         # Per-chat/topic ephemeral system prompts (topics inherit from parent group)
         "allowed_chats": "",           # If set, bot ONLY responds in these group/supergroup chat IDs (whitelist)
+        "brevity_guard": {
+            "enabled": False,
+            "soft_chars": 1600,
+            "hard_chars": 3000,
+            "target_chars": 900,
+            "skip_if_user_asked_detail": True,
+            "skip_code_blocks": True,
+            "skip_media_messages": True,
+        },
         "extra": {
             "rich_messages": False,     # Bot API 10.1 rich messages (tables/task lists/details/math) render natively; set True to opt in. Default stays legacy MarkdownV2 because rich messages can be hard to copy as plain text in Telegram clients.
         },

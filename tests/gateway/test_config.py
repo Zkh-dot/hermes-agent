@@ -912,6 +912,43 @@ class TestLoadGatewayConfig:
 
         assert config["telegram"]["extra"]["rich_messages"] is False
 
+    def test_load_config_default_keeps_telegram_brevity_guard_opt_in(self, tmp_path, monkeypatch):
+        hermes_home = tmp_path / ".hermes"
+        hermes_home.mkdir()
+
+        monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+
+        from hermes_cli.config import load_config
+
+        config = load_config()
+
+        guard = config["telegram"]["brevity_guard"]
+        assert guard["enabled"] is False
+        assert guard["soft_chars"] == 1600
+        assert guard["hard_chars"] == 3000
+        assert guard["target_chars"] == 900
+        assert guard["skip_if_user_asked_detail"] is True
+        assert guard["skip_code_blocks"] is True
+        assert guard["skip_media_messages"] is True
+
+    def test_default_auxiliary_telegram_brevity_guard_slot_exists(self, tmp_path, monkeypatch):
+        hermes_home = tmp_path / ".hermes"
+        hermes_home.mkdir()
+
+        monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+
+        from hermes_cli.config import load_config
+
+        config = load_config()
+
+        aux = config["auxiliary"]["telegram_brevity_guard"]
+        assert aux["provider"] == "auto"
+        assert aux["model"] == ""
+        assert aux["base_url"] == ""
+        assert aux["api_key"] == ""
+        assert aux["timeout"] == 30
+        assert aux["extra_body"] == {}
+
     def test_bridges_telegram_extra_base_url_from_config_yaml(self, tmp_path, monkeypatch):
         hermes_home = tmp_path / ".hermes"
         hermes_home.mkdir()
