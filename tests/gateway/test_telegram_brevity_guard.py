@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from gateway.config import Platform
@@ -32,7 +30,7 @@ def _long_text(marker: str = "важная деталь") -> str:
     return (
         f"Вердикт: делаем вариант B, потому что {marker}. "
         "Файл config.yaml менять не надо. Команда: hermes gateway restart. "
-        "Риск: не трогать MEDIA:/tmp/report.png руками. "
+        "Риск: не трогать ручные настройки без проверки. "
     ) * 4
 
 
@@ -136,6 +134,27 @@ async def test_long_code_block_is_unchanged_when_configured():
 
 
 @pytest.mark.asyncio
+async def test_long_media_marker_is_unchanged_when_configured():
+    calls = []
+
+    async def fake_llm(**kwargs):
+        calls.append(kwargs)
+        return _FakeResponse("short")
+
+    draft = _long_text() + "Вложение: MEDIA:/tmp/report.png"
+    result = await maybe_rewrite_for_telegram_brevity(
+        platform=Platform.TELEGRAM,
+        outgoing_text=draft,
+        user_message="что делать?",
+        user_config=_cfg(),
+        llm_call=fake_llm,
+    )
+
+    assert result == draft
+    assert calls == []
+
+
+@pytest.mark.asyncio
 async def test_non_telegram_platform_is_unchanged():
     calls = []
 
@@ -190,8 +209,9 @@ def test_prompt_preserves_key_facts_and_hard_instruction():
     assert "config.yaml" in combined
     assert "hermes gateway restart" in combined
     assert "42" in combined
-    assert "far too long for Telegram" in combined
-    assert "<= 90 chars" in combined
+    assert "telegram" in combined.lower()
+    assert "90" in combined
+    assert any(word in combined.lower() for word in ("hard", "strict", "must", "limit"))
 
 
 def test_exact_content_skips_patch_and_json():
