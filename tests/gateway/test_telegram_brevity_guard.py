@@ -371,6 +371,32 @@ def test_exact_content_skips_labeled_inline_shell_command():
     )[0] is True
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        (
+            "sudo bash -lc 'cd /srv/hermes-agent && "
+            "HERMES_HOME=/tmp/hermes-agent-test hermes gateway restart --profile telegram-sergey'"
+        ),
+        (
+            "bash -lc 'source .venv/bin/activate && "
+            "python -m pytest tests/gateway/test_telegram_brevity_guard.py -q --disable-warnings'"
+        ),
+        (
+            "env HERMES_HOME=/tmp/hermes-agent-test sh -c "
+            "'hermes gateway run --platform telegram --config /tmp/config.yaml'"
+        ),
+    ],
+)
+def test_exact_content_skips_shell_wrapper_commands(command):
+    assert should_skip_telegram_brevity_guard(
+        platform=Platform.TELEGRAM,
+        outgoing_text=f"Command: `{command}`",
+        user_message="send the command",
+        user_config=_cfg(skip_if_user_asked_detail=False),
+    )[0] is True
+
+
 def test_exact_content_skips_single_line_sql():
     sql = (
         "SELECT id, filename, command, created_at FROM gateway_events "
