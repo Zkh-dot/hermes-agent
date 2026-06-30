@@ -1,0 +1,134 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch:       # allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: personal
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/NousResearch/hermes-agent.git || git remote set-url upstream https://github.com/NousResearch/hermes-agent.git
+
+      - name: Fetch upstream main
+        run: git fetch upstream main
+
+      - name: Attempt merge without upstream workflows
+        id: merge
+        run: |
+          # Keep this fork's workflow files untouched. GitHub's GITHUB_TOKEN
+          # cannot update .github/workflows/* unless it has the workflow scope,
+          # so upstream workflow changes make an otherwise clean sync unpushable.
+          merge_status=0
+          git merge upstream/main --no-commit --no-ff || merge_status=$?
+
+          non_workflow_conflicts=$(git diff --name-only --diff-filter=U | grep -v '^\.github/workflows/' || true)
+          if [ -n "$non_workflow_conflicts" ]; then
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            {
+              echo "conflicts<<EOF"
+              printf '%s\n' "$non_workflow_conflicts"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            printf 'Non-workflow merge conflicts:\n%s\n' "$non_workflow_conflicts"
+            git merge --abort
+            exit 0
+          fi
+
+          # Drop all upstream changes under .github/workflows/, including files
+          # newly added upstream, then restore the fork's current workflow tree.
+          git rm -r -f --ignore-unmatch .github/workflows
+          git checkout HEAD -- .github/workflows
+          git add .github/workflows
+
+          if git diff --cached --quiet; then
+            echo "status=unchanged" >> "$GITHUB_OUTPUT"
+            git merge --abort || true
+            exit 0
+          fi
+
+          git commit --no-edit
+          echo "status=clean" >> "$GITHUB_OUTPUT"
+
+      - name: Push clean merge
+        if: steps.merge.outputs.status == 'clean'
+        run: git push origin personal
+
+      - name: Report conflict
+        if: steps.merge.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFLICT_FILES: ${{ steps.merge.outputs.conflicts }}
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA=$(git rev-parse upstream/main | head -c 8)
+          BODY="$(cat <<EOF
+          The daily upstream sync failed due to a merge conflict.
+
+          **Upstream:** \`upstream/main @ ${UPSTREAM_SHA}\`
+
+          **Conflicting non-workflow files:**
+
+          \`\`\`
+          ${CONFLICT_FILES}
+          \`\`\`
+
+          **Action required:** merge \`upstream/main\` into \`personal\` locally, resolve conflicts, and push.
+
+          \`\`\`bash
+          git fetch upstream
+          git checkout personal
+          git merge upstream/main
+          # resolve conflicts, then:
+          git add .
+          git commit
+          git push origin personal
+          \`\`\`
+
+          Run [the workflow manually](../../actions/workflows/sync-upstream.yml) after resolving.
+          EOF
+          )"
+
+          {
+            echo "### Upstream sync conflict"
+            echo
+            printf '%s\n' "$BODY"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.has_issues')" = "true" ]; then
+            existing_issue="$(
+              gh issue list \
+                --state open \
+                --search "Upstream sync conflict in:title" \
+                --json number \
+                --jq '.[0].number // empty'
+            )"
+            if [ -n "$existing_issue" ]; then
+              gh issue comment "$existing_issue" --body "$BODY"
+            else
+              gh issue create \
+                --title "Upstream sync conflict (upstream/main @ ${UPSTREAM_SHA})" \
+                --body "$BODY"
+            fi
+          else
+            echo "::warning::GitHub Issues are disabled for ${GITHUB_REPOSITORY}; wrote conflict details to the job summary."
+          fi
+
+          exit 1
