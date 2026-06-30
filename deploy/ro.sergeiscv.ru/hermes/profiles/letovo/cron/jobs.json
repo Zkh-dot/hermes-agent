@@ -1,0 +1,356 @@
+{
+  "jobs": [
+    {
+      "id": "a3135d595eed",
+      "name": "ya-host-daily-healthcheck",
+      "prompt": "\u041f\u0440\u043e\u0430\u043d\u0430\u043b\u0438\u0437\u0438\u0440\u0443\u0439 \u0432\u044b\u0432\u043e\u0434 healthcheck-\u0441\u043a\u0440\u0438\u043f\u0442\u0430 `ya-host-healthcheck.sh` \u0438 \u043f\u0440\u0438\u0448\u043b\u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044e \u043e\u0447\u0435\u043d\u044c \u043a\u043e\u0440\u043e\u0442\u043a\u0443\u044e \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u0443\u044e \u0441\u0432\u043e\u0434\u043a\u0443 \u043d\u0430 \u0440\u0443\u0441\u0441\u043a\u043e\u043c.\n\n\u0421\u043a\u0440\u0438\u043f\u0442 \u0442\u0435\u043f\u0435\u0440\u044c \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u0442 \u0434\u0432\u0430 \u0445\u043e\u0441\u0442\u0430/\u0431\u043b\u043e\u043a\u0430:\n1. \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u0439 `ya.sergeiscv.ru`;\n2. `LETOVOCORP HOST HEALTHCHECK` \u0434\u043b\u044f `letovocorp.ru` / `84.201.185.37`.\n\n\u0424\u043e\u0440\u043c\u0430\u0442 \u043e\u0442\u0432\u0435\u0442\u0430:\n- 1 \u0441\u0442\u0440\u043e\u043a\u0430 \u043e\u0431\u0449\u0435\u0433\u043e \u0441\u0442\u0430\u0442\u0443\u0441\u0430: `OK`, `WARN` \u0438\u043b\u0438 `CRIT`.\n- \u0417\u0430\u0442\u0435\u043c \u043c\u0430\u043a\u0441\u0438\u043c\u0443\u043c 5 \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0445 bullets \u043f\u043e \u0432\u0430\u0436\u043d\u044b\u043c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430\u043c.\n- \u0415\u0441\u043b\u0438 \u0432\u0441\u0451 \u043d\u043e\u0440\u043c\u0430\u043b\u044c\u043d\u043e, \u043d\u0430\u043f\u0438\u0448\u0438 \u043a\u043e\u0440\u043e\u0442\u043a\u043e, \u0447\u0442\u043e \u043e\u0431\u0430 \u0445\u043e\u0441\u0442\u0430 \u0436\u0438\u0432\u044b, \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u044b OK.\n- \u041d\u0435 \u043f\u0435\u0440\u0435\u0441\u043a\u0430\u0437\u044b\u0432\u0430\u0439 \u0432\u0435\u0441\u044c \u0432\u044b\u0432\u043e\u0434 \u0441\u043a\u0440\u0438\u043f\u0442\u0430.\n\nKnown non-issues / expected statuses:\n- \u041d\u0430 ya.sergeiscv.ru endpoint `/letovo-api/` \u043c\u043e\u0436\u0435\u0442 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c `501`; \u044d\u0442\u043e \u0438\u0437\u0432\u0435\u0441\u0442\u043d\u043e\u0435 \u043f\u043e\u0432\u0435\u0434\u0435\u043d\u0438\u0435 \u0441\u0442\u0430\u0440\u043e\u0433\u043e portal backend probe, \u041d\u0415 \u0441\u0447\u0438\u0442\u0430\u0442\u044c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u043e\u0439 \u0441\u0430\u043c\u043e \u043f\u043e \u0441\u0435\u0431\u0435.\n- \u041d\u0430 letovocorp.ru `portal_api_probe=501 expected=501` \u2014 \u043e\u0436\u0438\u0434\u0430\u0435\u043c\u043e, \u041d\u0415 \u0430\u043b\u0435\u0440\u0442.\n- \u041d\u0430 letovocorp.ru `/monitor/` \u0431\u0435\u0437 Basic Auth \u0434\u043e\u043b\u0436\u0435\u043d \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0442\u044c `401`; \u044d\u0442\u043e OK.\n- \u041d\u0430 letovocorp.ru map snapshot \u0441\u0435\u0439\u0447\u0430\u0441 \u043c\u043e\u0436\u0435\u0442 \u0431\u044b\u0442\u044c \u043f\u0443\u0441\u0442\u044b\u043c seed (`poi=[]`, `sectorTexts=[]`, etc.) \u0434\u043e \u0438\u043c\u043f\u043e\u0440\u0442\u0430 pg dump; \u044d\u0442\u043e OK.\n- `curl` WebSocket smoke \u043c\u043e\u0436\u0435\u0442 internally timeout after receiving `101 + hello`; \u0435\u0441\u043b\u0438 \u0441\u043a\u0440\u0438\u043f\u0442 \u043f\u0438\u0448\u0435\u0442 `websocket_ok=yes`, \u044d\u0442\u043e OK.\n\n\u0421\u0447\u0438\u0442\u0430\u0442\u044c \u0432\u0430\u0436\u043d\u044b\u043c\u0438 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430\u043c\u0438:\n- `STATUS: CRIT` \u0432 \u043b\u044e\u0431\u043e\u043c \u0431\u043b\u043e\u043a\u0435.\n- LetovoCorp: \u043b\u044e\u0431\u043e\u0439 missing/bad container \u0438\u0437 expected services (`letovo-front`, `letovo-registration-server`, `letovo-server`, `letovo-postgres-1`, `letovo-map-api`, `netdata`).\n- LetovoCorp: `nginx -t` \u043d\u0435\u0443\u0441\u043f\u0435\u0448\u0435\u043d, certbot timer inactive/disabled, cert <30 \u0434\u043d\u0435\u0439, HTTPS endpoints \u043d\u0435 \u0441\u043e\u0432\u043f\u0430\u043b\u0438 \u0441 expected, Brotli headers missing, websocket_ok=no, frontend_oldhost_count != 0.\n- \u0420\u0435\u0441\u0443\u0440\u0441\u044b: disk >=90%, RAM available <768 MiB, \u043d\u0435\u043e\u0436\u0438\u0434\u0430\u043d\u043d\u044b\u0439 Docker unhealthy/exited/restarting.\n\n\u0415\u0441\u043b\u0438 \u0435\u0441\u0442\u044c \u0442\u043e\u043b\u044c\u043a\u043e known non-issue `/letovo-api/=501` \u043d\u0430 ya.sergeiscv.ru, \u043e\u0431\u0449\u0438\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 \u043c\u043e\u0436\u043d\u043e \u043f\u043e\u043d\u0438\u0437\u0438\u0442\u044c \u0434\u043e OK/\u00ab\u0431\u0435\u0437 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439\u00bb, \u0443\u043f\u043e\u043c\u044f\u043d\u0443\u0432 \u043f\u0440\u0438 \u0436\u0435\u043b\u0430\u043d\u0438\u0438, \u0447\u0442\u043e \u044d\u0442\u043e \u043e\u0436\u0438\u0434\u0430\u0435\u043c\u044b\u0439 probe warning.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "ya-host-healthcheck.sh",
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * *",
+        "display": "0 9 * * *"
+      },
+      "schedule_display": "0 9 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 37
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-25T20:09:13.686218+00:00",
+      "next_run_at": "2026-07-01T09:00:00+00:00",
+      "last_run_at": "2026-06-30T09:00:38.391024+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    },
+    {
+      "id": "e0e507483a1f",
+      "name": "Yara-dreaming",
+      "prompt": "Run memory consolidation with the active backend",
+      "skills": [
+        "agent-dreaming-agnostic"
+      ],
+      "skill": "agent-dreaming-agnostic",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "1 1 * * *",
+        "display": "1 1 * * *"
+      },
+      "schedule_display": "1 1 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 35
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-26T12:10:54.935809+00:00",
+      "next_run_at": "2026-07-01T01:01:00+00:00",
+      "last_run_at": "2026-06-30T01:04:38.627380+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    },
+    {
+      "id": "c2026717025d",
+      "name": "restart-letovo-daily",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "restart-letovo.sh",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 0 * * *",
+        "display": "0 0 * * *"
+      },
+      "schedule_display": "0 0 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 32
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-29T15:41:15.810927+00:00",
+      "next_run_at": "2026-07-01T00:00:00+00:00",
+      "last_run_at": "2026-06-30T00:01:10.730294+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    },
+    {
+      "id": "6bcc16c4c2b4",
+      "name": "ya-xray-daily-restart",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "restart-ya-xray.sh",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 2 * * *",
+        "display": "0 2 * * *"
+      },
+      "schedule_display": "0 2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 30
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-05-31T09:55:06.622794+00:00",
+      "next_run_at": "2026-07-01T02:00:00+00:00",
+      "last_run_at": "2026-06-30T02:00:02.397289+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    },
+    {
+      "id": "c7d014239421",
+      "name": "tier-3-memory-pull",
+      "prompt": "Pull the tier-3 memory repo. Run: cd /home/yara/.hermes/forgejo/claude-code-memory && GIT_SSH_COMMAND=\"ssh -i /home/yara/.ssh/id_ed25519_ya -p 2222 -o StrictHostKeyChecking=accept-new\" git pull --ff-only 2>&1. Report only if pull fails or if new commits were fetched (i.e., \"Already up to date.\" is NOT in stdout).",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */2 * * *",
+        "display": "0 */2 * * *"
+      },
+      "schedule_display": "0 */2 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 345
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-01T20:01:12.831242+00:00",
+      "next_run_at": "2026-06-30T16:00:00+00:00",
+      "last_run_at": "2026-06-30T14:00:33.500639+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null,
+      "fire_claim": null
+    },
+    {
+      "id": "36ba5cf9eeb5",
+      "name": "gateway-watchdog",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": "gateway-watchdog.sh",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "interval",
+        "minutes": 10,
+        "display": "every 10m"
+      },
+      "schedule_display": "every 10m",
+      "repeat": {
+        "times": null,
+        "completed": 91
+      },
+      "enabled": false,
+      "state": "paused",
+      "paused_at": "2026-06-17T11:05:43.738333+00:00",
+      "paused_reason": null,
+      "created_at": "2026-06-10T08:31:29.580437+00:00",
+      "next_run_at": "2026-06-17T11:08:05.985078+00:00",
+      "last_run_at": "2026-06-17T10:15:05.479718+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": "default"
+    },
+    {
+      "id": "640fb92d1f84",
+      "name": "Erebor BP: re-enable collector on 01.07",
+      "prompt": "\u041d\u0430\u043f\u043e\u043c\u043d\u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044e: \u043d\u0443\u0436\u043d\u043e \u0432\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043e\u0431\u0440\u0430\u0442\u043d\u043e Erebor BP collector \u043f\u043e\u0441\u043b\u0435 AFK \u0434\u043e 01.07. \u041a\u043e\u043d\u0442\u0435\u043a\u0441\u0442: \u043d\u0430 ya.sergeiscv.ru \u0432 crontab \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f sergei-scv \u0441\u0442\u0440\u043e\u043a\u0430 `20 * * * * /home/sergei-scv/bots/obj-tracker/run_collector.sh` \u0431\u044b\u043b\u0430 \u0437\u0430\u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0430 2026-06-23 \u043a\u0430\u043a `# DISABLED 2026-06-23 by Yara: BP AFK until 2026-07-01. Original: ...`. \u041d\u0443\u0436\u043d\u043e \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0438\u0442\u044c \u0440\u0430\u0441\u043a\u043e\u043c\u043c\u0435\u043d\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u044d\u0442\u0443 \u0441\u0442\u0440\u043e\u043a\u0443 \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c, \u0447\u0442\u043e collector \u0441\u043d\u043e\u0432\u0430 \u0441\u043e\u0431\u0438\u0440\u0430\u0435\u0442 \u043f\u043e\u0438\u043d\u0442\u044b. \u041d\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0439 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u0431\u0435\u0437 \u044f\u0432\u043d\u043e\u0433\u043e \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "once",
+        "run_at": "2026-07-01T08:00:00+00:00",
+        "display": "once at 2026-07-01 08:00"
+      },
+      "schedule_display": "once at 2026-07-01 08:00",
+      "repeat": {
+        "times": 1,
+        "completed": 0
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-23T11:52:36.023552+00:00",
+      "next_run_at": "2026-07-01T08:00:00+00:00",
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null
+    },
+    {
+      "id": "90cb26425fd3",
+      "name": "daily-ai-news-digest",
+      "prompt": "\u0415\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u0430\u044f \u0437\u0430\u0434\u0430\u0447\u0430: \u0441\u043e\u0431\u0435\u0440\u0438 \u0438 \u043f\u0440\u0438\u0448\u043b\u0438 \u043a\u0440\u0430\u0442\u043a\u0443\u044e \u0441\u0432\u043e\u0434\u043a\u0443 \u0432\u0430\u0436\u043d\u044b\u0445 \u043d\u043e\u0432\u043e\u0441\u0442\u0435\u0439 AI-development \u0437\u0430 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 24\u201336 \u0447\u0430\u0441\u043e\u0432.\n\n\u041e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u043d\u044b\u0439 skill `daily-ai-news` \u043a\u0430\u043a \u043e\u0441\u043d\u043e\u0432\u043d\u043e\u0439 \u0440\u0435\u0433\u043b\u0430\u043c\u0435\u043d\u0442 \u043e\u0442\u0431\u043e\u0440\u0430 \u0438 \u0444\u043e\u0440\u043c\u0430\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f.\n\n\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u0430, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043d\u0435\u043b\u044c\u0437\u044f \u043d\u0430\u0440\u0443\u0448\u0430\u0442\u044c:\n- \u041f\u0438\u0448\u0438 \u043d\u0430 \u0440\u0443\u0441\u0441\u043a\u043e\u043c, Telegram-friendly, \u0431\u0435\u0437 pipe-\u0442\u0430\u0431\u043b\u0438\u0446.\n- \u0412\u044b\u0434\u0430\u0439 \u043e\u0442 0 \u0434\u043e 5 \u043d\u043e\u0432\u043e\u0441\u0442\u0435\u0439. 5 \u2014 \u0442\u043e\u043b\u044c\u043a\u043e \u0432\u0435\u0440\u0445\u043d\u044f\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u0430, \u043d\u0435 \u0446\u0435\u043b\u044c. \u041d\u0435 \u0437\u0430\u043f\u043e\u043b\u043d\u044f\u0439 \u043a\u0432\u043e\u0442\u0443 \u0441\u043b\u0430\u0431\u044b\u043c\u0438 \u043f\u0443\u043d\u043a\u0442\u0430\u043c\u0438.\n- \u0415\u0441\u043b\u0438 \u0432\u0430\u0436\u043d\u044b\u0445 \u043d\u043e\u0432\u043e\u0441\u0442\u0435\u0439 \u043d\u0435\u0442, \u043f\u0440\u044f\u043c\u043e \u043d\u0430\u043f\u0438\u0448\u0438, \u0447\u0442\u043e \u0437\u043d\u0430\u0447\u0438\u043c\u044b\u0445 AI-development \u043d\u043e\u0432\u043e\u0441\u0442\u0435\u0439 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.\n- \u041f\u043e\u043b\u043d\u043e\u0441\u0442\u044c\u044e \u0438\u0433\u043d\u043e\u0440\u0438\u0440\u0443\u0439 \u0432\u0441\u0435 \u043d\u043e\u0432\u043e\u0441\u0442\u0438 \u043f\u0440\u043e GitHub Copilot / Copilot CLI / Copilot app / Copilot Chat / Copilot changelog, \u0434\u0430\u0436\u0435 \u0435\u0441\u043b\u0438 \u043e\u043d\u0438 \u043a\u0430\u0436\u0443\u0442\u0441\u044f \u0441\u0432\u044f\u0437\u0430\u043d\u043d\u044b\u043c\u0438 \u0441 agents/tooling.\n- \u041f\u0440\u0438\u043e\u0440\u0438\u0442\u0435\u0442: \u043e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0435 \u0440\u0435\u043b\u0438\u0437\u044b \u043c\u043e\u0434\u0435\u043b\u0435\u0439, API, developer tools/frameworks, agent workflows, coding agents \u043a\u0440\u043e\u043c\u0435 Copilot, benchmark/leaderboard updates, \u0432\u0430\u0436\u043d\u044b\u0435 inference/deployment \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f.\n- \u0418\u0441\u043a\u043b\u044e\u0447\u0430\u0439 minor changelog entries, vendor tutorials, customer stories, \u0443\u0437\u043a\u0438\u0435 enterprise case studies \u0438 \u043c\u0430\u0440\u043a\u0435\u0442\u0438\u043d\u0433, \u0435\u0441\u043b\u0438 \u043e\u043d\u0438 \u043d\u0435 \u043c\u0435\u043d\u044f\u044e\u0442 AI-development workflow.\n- \u0414\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0439 \u0432\u043a\u043b\u044e\u0447\u0451\u043d\u043d\u043e\u0439 \u043d\u043e\u0432\u043e\u0441\u0442\u0438: \u043e\u0434\u0438\u043d \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 \u0430\u0431\u0437\u0430\u0446 \u201c\u0447\u0442\u043e \u0441\u043b\u0443\u0447\u0438\u043b\u043e\u0441\u044c \u0438 \u043f\u043e\u0447\u0435\u043c\u0443 \u0432\u0430\u0436\u043d\u043e\u201d + \u0441\u0441\u044b\u043b\u043a\u0430.\n- \u041f\u0440\u0435\u0434\u043f\u043e\u0447\u0438\u0442\u0430\u0439 \u043e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0435 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438. \u0415\u0441\u043b\u0438 \u043d\u043e\u0432\u043e\u0441\u0442\u044c \u043d\u0430\u0439\u0434\u0435\u043d\u0430 \u0447\u0435\u0440\u0435\u0437 newsletter/community, \u043d\u0430\u0439\u0434\u0438 \u043e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u044b\u0439 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a; \u0435\u0441\u043b\u0438 \u0435\u0433\u043e \u043d\u0435\u0442, \u044f\u0432\u043d\u043e \u0430\u0442\u0440\u0438\u0431\u0443\u0442\u0438\u0440\u0443\u0439 \u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a.\n- \u041d\u0435 \u0432\u044b\u0434\u0443\u043c\u044b\u0432\u0430\u0439 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u044f: \u0435\u0441\u043b\u0438 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u0430, \u043d\u043e \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 RSS metadata, \u0442\u0430\u043a \u0438 \u043d\u0430\u043f\u0438\u0448\u0438.\n\n\u041f\u0435\u0440\u0435\u0434 \u0444\u0438\u043d\u0430\u043b\u044c\u043d\u044b\u043c \u043e\u0442\u0432\u0435\u0442\u043e\u043c \u043f\u0440\u043e\u0432\u0435\u0440\u044c: \u043d\u0435\u0442 Copilot; \u0441\u043f\u0438\u0441\u043e\u043a \u043d\u0435 \u0440\u0430\u0437\u0434\u0443\u0442; \u043a\u0430\u0436\u0434\u0430\u044f \u043d\u043e\u0432\u043e\u0441\u0442\u044c \u0432\u0430\u0436\u043d\u0430\u044f; \u0443 \u043a\u0430\u0436\u0434\u043e\u0439 \u0435\u0441\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0430.",
+      "skills": [
+        "daily-ai-news"
+      ],
+      "skill": "daily-ai-news",
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 6 * * *",
+        "display": "30 6 * * *"
+      },
+      "schedule_display": "30 6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 7
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-24T20:30:35.673000+00:00",
+      "next_run_at": "2026-07-01T06:30:00+00:00",
+      "last_run_at": "2026-06-30T06:32:55.262373+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "361380081",
+        "chat_name": "scv",
+        "thread_id": null
+      },
+      "enabled_toolsets": [
+        "terminal",
+        "web",
+        "skills"
+      ],
+      "workdir": null,
+      "fire_claim": null
+    }
+  ],
+  "updated_at": "2026-06-30T14:00:33.503569+00:00"
+}
