@@ -682,6 +682,14 @@ def _pool_runtime_api_key(entry: Any) -> str:
 def _pool_runtime_base_url(entry: Any, fallback: str = "") -> str:
     if entry is None:
         return str(fallback or "").strip().rstrip("/")
+    if getattr(entry, "provider", None) == "nous":
+        # Funnel through the canonical auth-layer reader so the env override
+        # shares one normalization path with the rest of the NOUS resolution.
+        from hermes_cli.auth import _nous_inference_env_override
+
+        env_url = _nous_inference_env_override()
+        if env_url:
+            return env_url
     # runtime_base_url handles provider-specific logic (e.g. nous prefers inference_base_url).
     # Fall back through inference_base_url and base_url for non-PooledCredential entries.
     url = (
@@ -5257,6 +5265,16 @@ def _resolve_task_provider_model(
         cfg_api_key = str(task_config.get("api_key", "")).strip() or None
         cfg_api_mode = str(task_config.get("api_mode", "")).strip() or None
 
+    # 'auto' is a sentinel meaning "inherit from main runtime / auto-detect", not
+    # a literal model id. Without this, a config of `auxiliary.<task>.model: auto`
+    # propagates the literal string "auto" to the wire, where the provider returns
+    # a 200 OK with an error-text body (e.g. "the model 'auto' does not exist"),
+    # which downstream consumers like ContextCompressor accept as the task output.
+    # The provider-side 'auto' is handled in _resolve_auto() via main_runtime
+    # fallback, so dropping cfg_model to None here lets that path do its job.
+    if cfg_model and cfg_model.lower() == "auto":
+        cfg_model = None
+
     resolved_model = model or cfg_model
     resolved_api_mode = cfg_api_mode
 
@@ -5711,6 +5729,8 @@ def call_llm(
     timeout: float = None,
     extra_body: dict = None,
     api_mode: str = None,
+    stream: bool = False,
+    stream_options: dict = None,
 ) -> Any:
     """Centralized synchronous LLM call.
 
@@ -5731,9 +5751,16 @@ def call_llm(
         tools: Tool definitions (for function calling).
         timeout: Request timeout in seconds (None = read from auxiliary.{task}.timeout config).
         extra_body: Additional request body fields.
+        stream: When True, return the raw SDK streaming iterator instead of a
+            validated complete response. The caller is responsible for consuming
+            chunks (and for any fallback). Used by the MoA aggregator so its
+            output can stream to the user.
+        stream_options: Passed through to the request when stream is True
+            (e.g. {"include_usage": True}).
 
     Returns:
-        Response object with .choices[0].message.content
+        Response object with .choices[0].message.content, OR — when stream=True —
+        the raw streaming iterator from client.chat.completions.create().
 
     Raises:
         RuntimeError: If no provider is configured.
@@ -5834,6 +5861,20 @@ def call_llm(
     _client_base = str(getattr(client, "base_url", "") or "")
     if _is_anthropic_compat_endpoint(resolved_provider, _client_base):
         kwargs["messages"] = _convert_openai_images_to_anthropic(kwargs["messages"])
+
+    # Streaming path: return the raw SDK Stream iterator directly. This is used by
+    # the MoA aggregator so its tokens stream to the user. It deliberately skips
+    # _validate_llm_response and the temperature/max_tokens/payment fallback chain
+    # below — those all assume a complete response object, whereas a stream is
+    # consumed chunk-by-chunk by the caller. The caller (the agent's streaming
+    # consumer) owns chunk reassembly, stale-stream detection, and falling back to
+    # a non-streaming call on error. stream_options is best-effort: providers that
+    # reject it surface an error the caller's fallback already handles.
+    if stream:
+        kwargs["stream"] = True
+        if stream_options:
+            kwargs["stream_options"] = stream_options
+        return client.chat.completions.create(**kwargs)
 
     # Handle unsupported temperature, max_tokens vs max_completion_tokens retry,
     # then payment fallback.
