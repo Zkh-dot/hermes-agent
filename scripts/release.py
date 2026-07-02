@@ -45,6 +45,28 @@ ACP_REGISTRY_MANIFEST = REPO_ROOT / "acp_registry" / "agent.json"
 
 # Auto-extracted from noreply emails + manual overrides
 AUTHOR_MAP = {
+    "sahibzada@fastino.ai": "sahibzada-allahyar",  # PR #39227 salvage (desktop: configured terminal.cwd overrides a stale remembered workspace-cwd localStorage value when no session is active; #38855)
+    "jvsantos.cunha@gmail.com": "plcunha",  # PR #55300 salvage (gateway: record child gateway peer metadata after a compression session-id rotation and repoint stale sessions.json compression-parent entries to the recovered live child; consolidated in the compression-routing-integrity salvage)
+    "jakepresent1@gmail.com": "jakepresent",  # PR #55721 salvage (gateway: identity-guard stale in-flight compression splits — a late run may publish its compressed child only if its run generation is still current and the session key still points at the run's original parent, so an old run can't overwrite a newer /new or moved binding)
+    "zhangml@tech.icbc.com.cn": "zmlgit",  # PR #54872 salvage (multiplex-profile kanban: route task notifications via the owning profile's adapter + wake the creator agent with a synthetic internal MessageEvent on terminal events)
+    "1079826437@qq.com": "nankingjing",  # PR #56404 salvage (gateway: while a state.db compression lock is held for the session, demote busy_input_mode 'interrupt' to 'queue' so a rapid message burst can't interrupt and fork orphaned compression siblings off a stale parent; #56391)
+    "ud@arubangles.com": "udatny",  # PR #29433 salvage (subdirectory_hints: catch RuntimeError from Path.expanduser()/Path.home() so a literal ~ in tool-call args — e.g. LLM "~500-700" or ~unknownuser — can't escape the hint walker and crash the conversation loop)
+    "brett@personalfinancelab.com": "brett539",  # PR #49369 salvage (cap Telegram initialize() with asyncio.wait_for(HERMES_TELEGRAM_INIT_TIMEOUT, default 30s) per attempt so an unreachable fallback-IP connect chain can't block gateway startup indefinitely; add WARNING progress logs before DoH discovery and each connect attempt)
+    "randomuser2026x@proton.me": "randomuser2026x",  # PR #50204 salvage (gateway /restart under systemd: probe both system + --user scope for MainPID instead of hardcoding --user; always exit 75 so RestartForceExitStatus=75 revives the unit under Restart=on-failure too, not just Restart=always)
+    "mac-studio@Fabios-Mac-Studio.local": "valenteff",  # PR #53277 salvage (macOS launchd reload: retry bootstrap via _launchctl_bootstrap until launchctl-list confirms registration or the restart-drain window elapses; retry TimeoutExpired not just CalledProcessError; log persistent orphans)
+    "steve@lightpathapps.com": "slawt",  # PR #8427 salvage (Google Vertex AI provider for Gemini: OAuth2 token minting via service-account JSON / ADC on the OpenAI-compat endpoint, rewired as a provider profile with per-turn 401 token refresh)
+    "gary@bitcryptic.com": "bitcryptic-gw",  # PR #53997 salvage (Matrix E2EE: resolve device_id via query_keys({mxid: []}) when whoami returns none; guard verification call sites so query_keys is never sent [null]; reset _device_id_unverified at connect() start; disconnect before reconnect)
+    "gromyko.ss83@gmail.com": "Gromykoss",  # PR #56372 salvage (context_compressor merge-into-tail: place END MARKER last, wrap prior tail content in [PRIOR CONTEXT]...[END OF PRIOR CONTEXT] delimiters so the model doesn't read it as a fresh message)
+    "hodlclone@gmail.com": "HODLCLONE",  # PR #49351 salvage (Nous Portal token resilience: rotate refresh tokens write-through to the source auth store in profile mode, skip Nous fallback when no local token, sync gateway session model after fallback)
+    "7698789+abchiaravalle@users.noreply.github.com": "abchiaravalle",  # PR #46997 salvage (recover resume_pending sessions: dual freshness signal + empty-turn safety net so restart auto-resume never sends a blank user turn)
+    "swissly@users.noreply.github.com": "swissly",  # PR #47167 salvage (wrap cron delivery thread-pool fallback in its own try/except so a per-target failure can't escape the except-RuntimeError block and crash the multi-target delivery loop; #47163)
+    "53571168+shawchanshek@users.noreply.github.com": "shawchanshek",  # PR #44126 salvage (strip <think>...</think> reasoning blocks from title-generator LLM output via the canonical strip_think_blocks scrubber so reasoning-model output can't leak into session titles)
+    "30854794+YLChen-007@users.noreply.github.com": "YLChen-007",  # PR #27289 salvage (case-insensitive streaming reasoning-tag filter in cli.py _stream_delta + gateway stream_consumer so mixed-case variants like <Think>/<ThInK> are suppressed, not just the hardcoded case literals)
+    "27672904+kangsoo-bit@users.noreply.github.com": "kangsoo-bit",  # PR #47508 salvage (keep Telegram gateway alive on transient bootstrap network errors: best-effort deleteWebhook + resilient start_polling degrade to background recovery instead of failing startup)
+    "259353979+testingbuddies24@users.noreply.github.com": "testingbuddies24",  # PR #43192 salvage (strip orphan think-tag close tags in progressive gateway stream so a bare </think> whose open was dropped upstream can't leak to the user)
+    "shx_929@163.com": "Lazymonter",  # PR #42914 salvage (retry launchd bootstrap after bootout on EIO for install/start instead of degrading to detached)
+    "96322396+WXBR@users.noreply.github.com": "WXBR",  # PR #46183 salvage (persist recovered final_response at the finalize_turn chokepoint so recovery-path breaks don't drop the delivered assistant row)
+    "sahil.rakhaiya117814@marwadiuniversity.ac.in": "SahilRakhaiya05",  # PR #44073 salvage (fail-closed gateway/external-surface hardening: own-policy defaults, open-policy startup guard, profile-aware multiplex authz, API-server auth, execute_code per-session RPC token)
     "5848605+itenev@users.noreply.github.com": "itenev",  # PR #22753 salvage (asyncify model-context resolution in gateway message path so blocking requests.get can't starve Discord heartbeats)
     "arthur.zhang@ingenico.com": "arthurzhang",  # PR #34718 salvage (redact Slack App-Level xapp- tokens in agent/redact.py + gateway/run.py)
     "290873280+rrevenanttt@users.noreply.github.com": "rrevenanttt",  # PR #40773 salvage (close hardline rm bypass via quoted paths and ${HOME} brace form)
@@ -52,6 +74,9 @@ AUTHOR_MAP = {
     "214165399+kernel-t1@users.noreply.github.com": "kernel-t1",  # PR #41349 salvage (.env sanitizer: only split when line starts with a known KEY= and preceding values are plain tokens; keep URL/query/whitespace secrets verbatim)
     "290858493+sasquatch9818@users.noreply.github.com": "sasquatch9818",  # PR #41198 salvage (defang untrusted-tool-result delimiter against tag injection; drop forgeable startswith fast-path)
     "jnibarger01@gmail.com": "jnibarger01",  # PR #35130 salvage (ReDoS-bound threat-pattern filler + FTS5 query cap + V4A Move-File approval/traversal targets)
+    "yong2bba@gmail.com": "yong2bba",  # PR #49830 salvage (harden browser tool safety boundaries: config-gated risky-eval blocklist, force-redact browser/CDP/supervisor output, session-ownership tracking, credential-query denylist)
+    "info@djimit.nl": "djimit",  # PR #48034 salvage (recover from truncated gateway responses: 4 continuation retries + exponential token headroom + normalize empty partials)
+    "lubos@komfi.health": "lubosxyz",  # PR #49225 salvage (persist codex app-server turns to session DB via agent_persisted=False so session_search/distill see gateway conversations)
     "290868363+petrichor-op@users.noreply.github.com": "petrichor-op",  # PR #41281 salvage (never persist ephemeral empty-response recovery scaffolding to the SQLite session store / JSON log; filter by flag not position)
     "283494121+redactdeveloper@users.noreply.github.com": "redactdeveloper",  # PR #36897 salvage (route /sessions & /history through prompt_toolkit-safe print; filter doctor missing-key summary to CLI-enabled toolsets)
     "charleneleong84@gmail.com": "charleneleong-ai",  # PR #11736 salvage (classify Anthropic "out of extra usage" 400 as billing)
@@ -176,7 +201,7 @@ AUTHOR_MAP = {
     "dkobi16@gmail.com": "Diyoncrz18",
     "arnaud@nolimitdevelopment.com": "ali-nld",
     "sswdarius@gmail.com": "necoweb3",
-    "3483421977@qq.com": "xy200303",  # PR #40663 (approval shell-command-name deobfuscation)
+    "t.chen@aftership.com": "cypctlinux",  # PR #52403 salvage (Slack bot/workflow auth before no-user-id guard)
     "30854794+YLChen-007@users.noreply.github.com": "YLChen-007",  # PR #26965 (approval remote command substitution)
     "1078345+egilewski@users.noreply.github.com": "egilewski",  # co-author, PR #40663
     "peterhao@Peters-MacBook-Air.local": "pinguarmy",
@@ -219,6 +244,9 @@ AUTHOR_MAP = {
     "290859878+synapsesx@users.noreply.github.com": "synapsesx",
     "157689911+itsflownium@users.noreply.github.com": "itsflownium",
     "dirtyren@users.noreply.github.com": "dirtyren",
+    "153708448+hunjaiboy@users.noreply.github.com": "yyzquwu",  # PR #47567 salvage (Matrix: register inbound handlers with wait_sync=True so _dispatch_sync's gather awaits them; without it mautrix fire-and-forgets and inbound intake has no completion point)
+    "jearnest@velocityenergy.com": "jearnest11",  # PR #48700 salvage (multi-profile gateway flap: use node symlink's own parent, not .resolve() target, when building systemd/launchd service PATH so one profile's node path can't leak into every unit and force a perpetual daemon-reload restart loop)
+    "tgmerritt@gmail.com": "tgmerritt",  # PR #43553 salvage (parse vLLM's token-based output-cap error format so over-cap max_tokens 400s reduce the output cap instead of death-looping into compression)
     "13277570+justin-cyhuang@users.noreply.github.com": "justin-cyhuang",
     "agent@tranquil-flow.dev": "Tranquil-Flow",
     "jason@hermes-jc": "jcjc81",
@@ -1795,6 +1823,21 @@ AUTHOR_MAP = {
     "afnlegion01@gmail.com": "Afnath-max",  # PR #49129 salvage (opencode-zen catalog refresh + uncapped/live-first picker)
     "sharma.priyanshu96@gmail.com": "ipriyaaanshu",  # PR #51488 salvage (clear stale base_url on gateway model switches; #25107)
     "290881485+mrparker0980@users.noreply.github.com": "mrparker0980",  # @file context-ref expansion anchored to canonical read deny-list
+    # v0.18.0 additions
+    "3483421977@qq.com": "AetherAgents",  # direct email match
+    "SJWATTS89@OUTLOOK.COM": "lEWFkRAD",  # PR #45610 (Windows scheduled task reboot survival)
+    "andhika.prakasiwi@gmail.com": "p-andhika",  # PR #53312 co-author (setup guide button)
+    "annguyen@nousresearch.com": "annguyenNous",  # PR #52844 co-author
+    "carlitosdiazplaza@gmail.com": "talmax1124",  # direct email match
+    "christianpersico98@gmail.com": "chrispersico",  # commit 135f2351 PR author
+    "daniel.laforce@argobox.com": "KeyArgo",  # co-author
+    "joeykerp@gmail.com": "spjoes",  # direct email match
+    "keyargo@argobox.com": "KeyArgo",  # PR #45638 author
+    "lucas.nicolas@proton.me": "Lucas Nicolas",  # PR #54210 co-author (display name)
+    "max.petrusenko.agent@gmail.com": "maxpetrusenko",  # PR #54128 co-author
+    "poli.koltsova@gmail.com": "wnuuee1",  # commit 9fd2b2cb PR author
+    "yosapol@jitrak.dev": "Eji4h",  # direct email match
+    "kiljadn@gmail.com": "designnotdrum",  # PR #56480 salvage (toolset static-inference fix)
 }
 
 
