@@ -239,6 +239,14 @@ DEFAULT_CONFIG = {
         "backend": "local",
         "modal_mode": "auto",
         "cwd": ".",  # Use current directory
+        # Terminal font family for the desktop app's embedded xterm.js terminal.
+        # When set (e.g. "'CaskaydiaCoveNerdFont', 'JetBrains Mono', monospace"),
+        # the desktop terminal uses this as the CSS font-family value, with the
+        # built-in default ("'JetBrains Mono', 'Cascadia Code', 'SF Mono', Menlo,
+        # Consolas, monospace") as fallback when the field is empty or unset.
+        # This lets users install a Nerd Font (or any custom font) and configure
+        # it here without patching the built desktop app.
+        "font_family": "",
         "timeout": 180,
         # Bounded grace period (seconds) between SIGTERM and an escalated
         # SIGKILL when terminating a host process tree (browser daemons, etc.).
@@ -712,7 +720,9 @@ DEFAULT_CONFIG = {
     },
 
     # Anthropic prompt caching (Claude via OpenRouter or native Anthropic API).
-    # cache_ttl must be "5m" or "1h" (Anthropic-supported tiers); other values are ignored.
+    # cache_ttl: "5m" or "1h" (Anthropic-supported tiers). Other non-falsy
+    # values are silently ignored. Falsy values (false, null, "off",
+    # "disabled", "no", "none") disable prompt caching entirely.
     "prompt_caching": {
         "cache_ttl": "5m",
     },
@@ -792,6 +802,20 @@ DEFAULT_CONFIG = {
         # not a meaningful recovery, so an unretried blip silently loses the
         # call.
         "transient_retries": 2,
+        # Restrict the auxiliary auto-chain's OpenRouter fallback to free
+        # (:free) SKUs. When true, the OpenRouter step is skipped entirely
+        # unless the resolved fallback model ends in ":free" — a PAID lane
+        # is never engaged for background auxiliary traffic (compression,
+        # title generation, session search, vision, web extract) even when
+        # OPENROUTER_API_KEY is present. Default false keeps the historical
+        # paid fallback for users who want it.
+        "free_only": False,
+        # Override the auxiliary auto-chain's OpenRouter fallback model
+        # (default: google/gemini-3.6-flash, a PAID model). Set e.g.
+        # "nvidia/nemotron-3-ultra-550b-a55b:free" together with
+        # free_only: true to keep auxiliary traffic free-only. A one-time
+        # WARNING is logged whenever a non-":free" model is engaged.
+        "openrouter_model": "",
         # Endpoints that reject NON-streaming chat requests outright (e.g.
         # Tencent Copilot returns HTTP 400 "Non-stream chat request is
         # currently not supported"). Auxiliary calls to a matching endpoint
