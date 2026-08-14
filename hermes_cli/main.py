@@ -2538,7 +2538,15 @@ def cmd_chat(args):
     # recorded cwd (so the restore step below is skipped).
     in_dir = getattr(args, "in_dir", None)
     if in_dir:
-        _target_dir = os.path.abspath(os.path.expanduser(in_dir))
+        # Git Bash / MSYS hands the CLI POSIX-style paths (`--in ~` expands to
+        # `/c/Users/x` before Python ever sees it; MSYS2's path conversion is
+        # disabled for native executables). Translate the MSYS/Cygwin/WSL
+        # drive-root spellings to native Windows form first — no-op elsewhere.
+        from tools.environments.local import _msys_to_windows_path
+
+        _target_dir = os.path.abspath(
+            os.path.expanduser(_msys_to_windows_path(in_dir))
+        )
         if not os.path.isdir(_target_dir):
             print(f"Error: --in directory not found: {in_dir}")
             sys.exit(1)
@@ -5767,7 +5775,25 @@ def _do_build_web_ui(web_dir: Path, *, fatal: bool = False) -> bool:
     # would pull in desktop on every web build. See #38772.
     # When web/ has its own package-lock.json, _workspace_root() returns
     # web_dir itself and --workspace would fail.  See #42973.
-    npm_workspace_args: tuple[str, ...] = () if npm_cwd == web_dir else ("--workspace", "web")
+    #
+    # When running from the workspace root, this must name the SAME closure
+    # as `hermes update`'s _update_node_dependencies() (ui-tui + web +
+    # --include-workspace-root): the helper prefers `npm ci`, which deletes
+    # node_modules before reifying the requested tree, so a narrower closure
+    # here silently prunes everything the update step just installed (root
+    # devDependencies and the ui-tui workspace) while still exiting 0 —
+    # and since the manifests digest was already recorded, later no-op
+    # updates skip the repair. See #43564/#64354.
+    npm_workspace_args: tuple[str, ...]
+    if npm_cwd == web_dir:
+        npm_workspace_args = ()
+    else:
+        npm_workspace_args = ("--workspace", "web", "--include-workspace-root")
+        # Prebuilt/partial checkouts can lack the ui-tui workspace; naming a
+        # missing workspace makes npm fail hard, so only include it when
+        # present (same guard as _update_node_dependencies()).
+        if (npm_cwd / "ui-tui" / "package.json").exists():
+            npm_workspace_args = ("--workspace", "ui-tui", *npm_workspace_args)
     if _is_termux_startup_environment():
         npm_cwd, npm_workspace_args = _termux_workspace_install_context(web_dir)
 
@@ -5940,8 +5966,72 @@ def _desktop_stamp_path() -> Path:
     return get_hermes_home() / "desktop-build-stamp.json"
 
 
+def _renderer_bundle_dir(desktop_dir: Path, *, source_mode: bool) -> Optional[Path]:
+    """The renderer ``dist`` directory a launch loads, when it is inspectable.
+
+    Source mode builds to ``apps/desktop/dist``. A packaged app ships the same
+    bundle twice — inside ``app.asar`` and, because ``asarUnpack`` lists
+    ``dist/**``, beside it in ``app.asar.unpacked``. Only the unpacked copy is
+    a real directory; that is also the one an interrupted replace tears, so
+    checking it catches the failure we care about.
+    """
+    if source_mode:
+        return desktop_dir / "dist"
+
+    executable = _desktop_packaged_executable(desktop_dir)
+    if executable is None:
+        return None
+
+    # macOS: …/Hermes.app/Contents/MacOS/Hermes → …/Contents/Resources
+    resources = (
+        executable.parent.parent / "Resources"
+        if sys.platform == "darwin"
+        else executable.parent / "resources"
+    )
+    return resources / "app.asar.unpacked" / "dist"
+
+
+# The module files the renderer fetches before any app code runs: Vite emits
+# them as `<script type="module" src>` plus `<link rel="modulepreload" href>`.
+_HTML_TAG_WITH_URL = re.compile(r"""<(?:script|link)\b[^>]*\b(?:src|href)=["']([^"']+)["'][^>]*>""", re.IGNORECASE)
+_MODULE_TAG = re.compile(r"""\btype=["']module["']|\brel=["']modulepreload["']""", re.IGNORECASE)
+
+
+def _renderer_bundle_torn(dist_dir: Path) -> bool:
+    """True when ``index.html`` names hashed module files that aren't there.
+
+    ``index.html`` and the hashed chunks under ``assets/`` are ONE generation.
+    An update that replaces the app while its files are locked (antivirus, a
+    still-running instance, an interrupted Windows replace) can leave the two
+    behind from different generations. The app then launches and dies on the
+    first lazy import with ``Failed to fetch dynamically imported module:
+    …/assets/<chunk>-<hash>.js`` — and because the content stamp still matches
+    the intact SOURCE tree, ``hermes desktop`` skips the rebuild that would fix
+    it, so every relaunch reproduces the crash and reinstalling looks like the
+    only way out. Detecting the tear turns it into a normal rebuild.
+
+    Conservative: an unreadable index, or one naming nothing checkable, is NOT
+    reported as torn — the missing-bundle guards own those cases.
+    """
+    try:
+        html = (dist_dir / "index.html").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+
+    for match in _HTML_TAG_WITH_URL.finditer(html):
+        href = match.group(1)
+        # Absolute/CDN URLs aren't part of this bundle's generation.
+        if not _MODULE_TAG.search(match.group(0)) or re.match(r"^[a-z]+:|^//", href, re.IGNORECASE):
+            continue
+        rel = href.split("?", 1)[0].split("#", 1)[0].lstrip("./")
+        if rel and not (dist_dir / rel).exists():
+            return True
+
+    return False
+
+
 def _desktop_build_needed(desktop_dir: Path, project_root: Path, *, source_mode: bool) -> bool:
-    """Return True when the desktop build output is stale or missing.
+    """Return True when the desktop build output is stale, missing, or torn.
 
     Compares the current content hash against the saved stamp. Also returns
     True if the expected build artifact doesn't exist (e.g. first run after
@@ -5954,6 +6044,14 @@ def _desktop_build_needed(desktop_dir: Path, project_root: Path, *, source_mode:
     else:
         if _desktop_packaged_executable(desktop_dir) is None:
             return True
+
+    # A torn renderer bundle is stale no matter what the stamp says: the hash
+    # describes the SOURCE tree, which is intact, while the built output is the
+    # half-replaced one that crashes on its first lazy import.
+    dist_dir = _renderer_bundle_dir(desktop_dir, source_mode=source_mode)
+    if dist_dir is not None and _renderer_bundle_torn(dist_dir):
+        print(f"  ⚠ A previous update left the desktop bundle incomplete ({dist_dir}); rebuilding it")
+        return True
 
     stamp_file = _desktop_stamp_path()
     if not stamp_file.is_file():
