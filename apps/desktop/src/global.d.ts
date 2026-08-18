@@ -1,4 +1,5 @@
 import type { GatewayWsUrlResult } from '@hermes/shared'
+import type { TranslucencyState } from '@hermes/shared/translucency'
 
 import type { WakeIndicatorState } from './lib/wake-indicator'
 import type {
@@ -226,7 +227,7 @@ declare global {
       setActiveWork?: (payload: HermesActiveWork) => void
       setTitleBarTheme?: (payload: HermesTitleBarTheme) => void
       setNativeTheme?: (mode: 'dark' | 'light' | 'system') => void
-      setTranslucency?: (payload: { intensity: number }) => void
+      setTranslucency?: (payload: TranslucencyState) => void
       setKeepAwake?: (on: boolean) => void
       setDisableF12?: (blocked: boolean) => void
       setPreviewShortcutActive?: (active: boolean) => void
@@ -450,6 +451,11 @@ export interface DesktopVersionInfo {
   nodeVersion: string
   platform: string
   hermesRoot: string
+  /** True when the running renderer bundle predates desktop changes in the
+   *  installed source tree (runtime updated, app binary not rebuilt/swapped). */
+  bundleOutOfSync?: boolean
+  /** Commits under apps/desktop/ the running bundle is missing (null unknown). */
+  bundleCommitsBehind?: null | number
 }
 
 export type DesktopUninstallMode = 'full' | 'gui' | 'lite'
@@ -758,6 +764,11 @@ export interface DesktopRegistryConnection {
   // header VALUES are secrets and never cross the IPC boundary. Optional so
   // fixtures/older payloads without the field remain valid.
   headerNames?: string[]
+  // Last-known stable backend identity (the /api/status `install_id`).
+  // Present once a roster enumeration or connection test has seen it; two
+  // connections sharing it are one physical backend registered under two
+  // addresses (display-only "Same backend as …" hint in Settings).
+  installId?: string
 }
 
 export interface DesktopConnectionsRegistry {
@@ -812,6 +823,8 @@ export interface DesktopAgentRoster {
     kind: DesktopConnectionKind
     reachable: boolean
     error?: string
+    // Stable backend identity (/api/status install_id) when known.
+    installId?: string
   }[]
 }
 
